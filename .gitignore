@@ -42,3 +42,6 @@ volumes/
 # Distribution / packaging
 *.tar.gz
 *.whl
+
+# Claude Code session guide — local only
+CLAUDE.md
