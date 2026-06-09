@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Brief — Agentic RAG for Threat Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700;9..144,900&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-0: #0a0a0d;
+  --bg-1: #111116;
+  --bg-2: #16161e;
+  --bg-3: #1f1f29;
+  --text-0: #ebe8d8;
+  --text-1: #b8b5a4;
+  --text-2: #7a7868;
+  --text-3: #4d4c42;
+  --amber: #d4a259;
+  --amber-bright: #e8b969;
+  --rust: #c0533c;
+  --teal: #5a8a8a;
+  --sage: #7a9268;
+  --border: #28283a;
+  --border-strong: #3a3a4d;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: var(--bg-0);
+  color: var(--text-0);
+  font-size: 16px;
+  line-height: 1.65;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(212, 162, 89, 0.06), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(192, 83, 60, 0.04), transparent);
+  min-height: 100vh;
+}
+
+.grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  z-index: 100;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* COVER */
+.cover {
+  padding: 100px 0 80px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.classification {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 48px;
+  padding: 6px 14px;
+  border: 1px solid var(--amber);
+  border-radius: 2px;
+  background: rgba(212, 162, 89, 0.05);
+}
+
+.classification::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: var(--amber);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+h1.title {
+  font-family: 'Fraunces', serif;
+  font-weight: 400;
+  font-size: clamp(40px, 6vw, 76px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  margin-bottom: 32px;
+  color: var(--text-0);
+}
+
+h1.title em {
+  font-style: italic;
+  font-weight: 300;
+  color: var(--amber);
+}
+
+.subtitle {
+  font-family: 'Fraunces', serif;
+  font-size: 20px;
+  font-weight: 300;
+  font-style: italic;
+  color: var(--text-1);
+  max-width: 680px;
+  line-height: 1.5;
+  margin-bottom: 56px;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border);
+}
+
+.meta-item .label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+
+.meta-item .value {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  color: var(--text-0);
+  font-weight: 500;
+}
+
+/* SECTIONS */
+section {
+  padding: 80px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  margin-bottom: 48px;
+}
+
+.section-number {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--amber);
+  letter-spacing: 0.1em;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+h2 {
+  font-family: 'Fraunces', serif;
+  font-weight: 400;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--text-0);
+}
+
+h3 {
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -0.01em;
+  margin-bottom: 16px;
+  margin-top: 40px;
+  color: var(--text-0);
+}
+
+h4 {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--amber);
+  margin-bottom: 14px;
+  margin-top: 24px;
+}
+
+p {
+  margin-bottom: 18px;
+  color: var(--text-0);
+  max-width: 78ch;
+}
+
+p.lead {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  line-height: 1.45;
+  font-weight: 300;
+  color: var(--text-1);
+  margin-bottom: 32px;
+  max-width: 68ch;
+}
+
+strong {
+  color: var(--amber-bright);
+  font-weight: 600;
+}
+
+em {
+  color: var(--text-1);
+  font-style: italic;
+}
+
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.88em;
+  background: var(--bg-2);
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: var(--amber);
+  border: 1px solid var(--border);
+}
+
+a {
+  color: var(--amber);
+  text-decoration: none;
+  border-bottom: 1px solid var(--border-strong);
+  transition: border-color 0.2s ease;
+}
+
+a:hover {
+  border-bottom-color: var(--amber);
+}
+
+/* CARDS / STACK */
+.stack-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0;
+  border: 1px solid var(--border);
+  background: var(--bg-1);
+  margin-top: 32px;
+}
+
+.stack-card {
+  padding: 32px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.stack-card:nth-child(2n) { border-right: none; }
+.stack-card:nth-last-child(-n+2) { border-bottom: none; }
+
+.stack-card .stack-name {
+  font-family: 'Fraunces', serif;
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text-0);
+  margin-bottom: 4px;
+}
+
+.stack-card .stack-role {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 16px;
+}
+
+.stack-card .stack-rationale {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-1);
+}
+
+.stack-card .tradeoff {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+  font-size: 13px;
+  color: var(--text-2);
+  font-style: italic;
+}
+
+/* PHASE TIMELINE */
+.phases {
+  margin-top: 32px;
+}
+
+.phase {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 32px;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--border);
+  align-items: start;
+}
+
+.phase:last-child { border-bottom: none; }
+
+.phase-marker {
+  font-family: 'JetBrains Mono', monospace;
+  position: relative;
+  padding-top: 4px;
+}
+
+.phase-marker .phase-id {
+  font-size: 11px;
+  color: var(--text-2);
+  letter-spacing: 0.1em;
+}
+
+.phase-marker .phase-num {
+  font-family: 'Fraunces', serif;
+  font-size: 38px;
+  font-weight: 300;
+  color: var(--amber);
+  line-height: 1;
+  margin-top: 4px;
+  font-feature-settings: 'tnum';
+}
+
+.phase-content h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 22px;
+}
+
+.phase-content p {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--text-1);
+  margin-bottom: 12px;
+}
+
+.phase-deliverable {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--sage);
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
+  margin-top: 8px;
+}
+
+/* CODE BLOCK */
+pre {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--amber);
+  padding: 20px 24px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-0);
+  margin: 20px 0;
+  overflow-x: auto;
+  border-radius: 2px;
+}
+
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+.pre-comment { color: var(--text-2); font-style: italic; }
+.pre-key { color: var(--teal); }
+.pre-val { color: var(--amber); }
+
+/* CALLOUT */
+.callout {
+  border-left: 3px solid var(--rust);
+  background: rgba(192, 83, 60, 0.04);
+  padding: 20px 24px;
+  margin: 28px 0;
+  border-radius: 2px;
+}
+
+.callout-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--rust);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.callout p {
+  margin-bottom: 0;
+  font-size: 14.5px;
+  color: var(--text-0);
+}
+
+.callout-success {
+  border-left-color: var(--sage);
+  background: rgba(122, 146, 104, 0.04);
+}
+.callout-success .callout-label {
+  color: var(--sage);
+}
+
+/* CORPUS LIST */
+.corpus-list {
+  list-style: none;
+  margin-top: 24px;
+}
+
+.corpus-list li {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 24px;
+  align-items: baseline;
+}
+
+.corpus-list li:last-child { border-bottom: none; }
+
+.corpus-name {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-0);
+}
+
+.corpus-source {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-2);
+  display: block;
+  margin-top: 2px;
+}
+
+.corpus-desc {
+  font-size: 14px;
+  color: var(--text-1);
+  line-height: 1.55;
+}
+
+/* QUERY EXAMPLES */
+.query-example {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 17px;
+  color: var(--text-0);
+  padding: 16px 24px;
+  border-left: 2px solid var(--amber);
+  margin: 16px 0;
+  background: var(--bg-1);
+}
+
+/* METHODOLOGY */
+.method-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  margin-top: 32px;
+}
+
+.method-card {
+  padding: 28px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+.method-num {
+  font-family: 'Fraunces', serif;
+  font-size: 32px;
+  font-weight: 300;
+  color: var(--amber);
+  line-height: 1;
+  margin-bottom: 12px;
+}
+
+.method-card h4 {
+  margin-top: 0;
+  color: var(--text-0);
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  font-size: 18px;
+}
+
+.method-card p {
+  font-size: 14px;
+  color: var(--text-1);
+  margin-bottom: 0;
+}
+
+/* ARCHITECTURE DIAGRAM */
+.architecture {
+  margin: 40px 0;
+  padding: 32px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow-x: auto;
+}
+
+.architecture svg {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto;
+}
+
+.diagram-caption {
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin-top: 16px;
+}
+
+/* GROUND RULES */
+.rules-list {
+  list-style: none;
+  counter-reset: rule;
+  margin-top: 24px;
+}
+
+.rules-list li {
+  counter-increment: rule;
+  padding: 20px 0 20px 60px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.rules-list li::before {
+  content: counter(rule, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: 22px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--amber);
+  font-weight: 500;
+}
+
+.rules-list li:last-child { border-bottom: none; }
+
+.rules-list .rule-title {
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-0);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.rules-list .rule-body {
+  font-size: 14.5px;
+  color: var(--text-1);
+  line-height: 1.6;
+}
+
+/* REFERENCES */
+.references {
+  margin-top: 28px;
+}
+
+.reference {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.reference:last-child { border-bottom: none; }
+
+.reference-title {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--text-0);
+  margin-bottom: 4px;
+  display: block;
+}
+
+.reference-source {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+
+.reference-note {
+  font-size: 14px;
+  color: var(--text-1);
+  line-height: 1.55;
+}
+
+/* FOOTER */
+footer {
+  padding: 60px 0 80px;
+  text-align: center;
+  color: var(--text-2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+}
+
+footer .divider {
+  width: 40px;
+  height: 1px;
+  background: var(--border-strong);
+  margin: 0 auto 24px;
+}
+
+/* Decorative section dividers */
+.divider-ornament {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 0 auto 48px;
+  width: fit-content;
+}
+.divider-ornament .line {
+  width: 32px;
+  height: 1px;
+  background: var(--border-strong);
+}
+.divider-ornament .mark {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--amber);
+  font-size: 14px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .container { padding: 0 20px; }
+  .cover { padding: 60px 0 50px; }
+  .meta-grid { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+  .stack-grid { grid-template-columns: 1fr; }
+  .stack-card { border-right: none !important; }
+  .stack-card:last-child { border-bottom: none; }
+  .corpus-list li { grid-template-columns: 1fr; gap: 8px; }
+  .phase { grid-template-columns: 80px 1fr; gap: 16px; }
+  .method-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<div class="container">
+
+<!-- ============== COVER ============== -->
+<header class="cover">
+  <div class="classification">
+    <span>Technical Brief · Project Specification</span>
+  </div>
+  <h1 class="title">An Agentic <em>RAG</em> System<br>for Threat Intelligence.</h1>
+  <p class="subtitle">A production-grade technical specification — the single source of truth for system design, implementation decisions, and phase sequencing.</p>
+
+  <div class="meta-grid">
+    <div class="meta-item">
+      <div class="label">Domain</div>
+      <div class="value">Cybersecurity</div>
+    </div>
+    <div class="meta-item">
+      <div class="label">Architecture</div>
+      <div class="value">Agentic RAG</div>
+    </div>
+    <div class="meta-item">
+      <div class="label">Build Window</div>
+      <div class="value">6–10 weeks</div>
+    </div>
+    <div class="meta-item">
+      <div class="label">Status</div>
+      <div class="value">Phase 1 — In Progress</div>
+    </div>
+  </div>
+</header>
+
+<!-- ============== 01 OVERVIEW ============== -->
+<section id="overview">
+  <div class="section-header">
+    <span class="section-number">§ 01</span>
+    <h2>What we are building, and why.</h2>
+  </div>
+
+  <p class="lead">A production-grade Agentic RAG system that answers threat-intelligence questions over publicly available cybersecurity corpora — built end-to-end with the engineering discipline of a real platform team, not a tutorial project.</p>
+
+  <p>The system ingests heterogeneous security data (CVE/NVD records, MITRE ATT&amp;CK techniques, vendor advisories, public threat-actor reports, detection rules), indexes it into a hybrid retrieval layer, and exposes a stateful agentic query engine via an authenticated HTTP API. The agent reasons about the question, decides which sources to query, performs iterative retrieval with self-grading, and produces cited, auditable answers within enforced time and cost budgets.</p>
+
+  <p>Every architectural decision in this brief is made to be defensible and explicitly documented — trade-offs acknowledged, alternatives considered, and rationale recorded.</p>
+</section>
+
+<!-- ============== 02 SUBJECT MATTER ============== -->
+<section id="subject">
+  <div class="section-header">
+    <span class="section-number">§ 02</span>
+    <h2>Subject matter &amp; corpora.</h2>
+  </div>
+
+  <p>Cybersecurity threat intelligence is chosen because it surfaces every interesting RAG engineering problem: heterogeneous source schemas, heavy metadata filtering, citation-mandatory output, time-sensitivity, and multi-hop reasoning across structured and unstructured data. The corpora are all publicly accessible.</p>
+
+  <ul class="corpus-list">
+    <li>
+      <div>
+        <div class="corpus-name">NVD &amp; CVE Records</div>
+        <span class="corpus-source">services.nvd.nist.gov</span>
+      </div>
+      <div class="corpus-desc">Structured vulnerability records with CVSS scores, affected products (CPE), and free-text descriptions. The "structured-meets-unstructured" backbone.</div>
+    </li>
+    <li>
+      <div>
+        <div class="corpus-name">MITRE ATT&amp;CK</div>
+        <span class="corpus-source">attack.mitre.org · STIX/TAXII</span>
+      </div>
+      <div class="corpus-desc">Tactics, techniques, sub-techniques, threat-actor profiles, and software catalogs. Graph-shaped; introduces relationship-aware retrieval.</div>
+    </li>
+    <li>
+      <div>
+        <div class="corpus-name">Vendor Advisories</div>
+        <span class="corpus-source">Microsoft MSRC · Cisco PSIRT · Red Hat</span>
+      </div>
+      <div class="corpus-desc">Long-form narrative advisories with embedded IOCs and remediation guidance. Forces table-aware and section-aware chunking.</div>
+    </li>
+    <li>
+      <div>
+        <div class="corpus-name">Detection Rule Repositories</div>
+        <span class="corpus-source">SigmaHQ · YARA-Rules (GitHub)</span>
+      </div>
+      <div class="corpus-desc">YAML/regex rules mapped to ATT&amp;CK techniques. Introduces cross-corpus joining: "what detects this TTP?"</div>
+    </li>
+    <li>
+      <div>
+        <div class="corpus-name">Public Threat-Actor Reports</div>
+        <span class="corpus-source">Mandiant · Unit 42 · CrowdStrike (public)</span>
+      </div>
+      <div class="corpus-desc">Narrative attribution and campaign analysis. The hardest unstructured tier; tests entity linking and temporal reasoning.</div>
+    </li>
+  </ul>
+
+  <h4>Example Queries the System Must Handle</h4>
+  <div class="query-example">"What recent vulnerabilities affect Kubernetes 1.28, have public proofs-of-concept, and which detection rules cover them?"</div>
+  <div class="query-example">"What TTPs has APT29 used against financial services in the last 24 months, and how do they map to MITRE ATT&amp;CK?"</div>
+  <div class="query-example">"Compare the remediation guidance across the latest Microsoft Exchange advisories and identify common attacker techniques."</div>
+
+  <p style="margin-top: 24px;">Each example forces multi-source retrieval, temporal filtering, and cross-corpus reasoning. A single vector search cannot answer any of them — which is precisely the point.</p>
+</section>
+
+<!-- ============== 03 DEV ENVIRONMENT ============== -->
+<section id="environment">
+  <div class="section-header">
+    <span class="section-number">§ 03</span>
+    <h2>Development environment.</h2>
+  </div>
+
+  <p>The local environment is fixed and dictates some early choices (line endings, Docker Desktop quirks, WSL2 considerations).</p>
+
+  <div class="stack-grid">
+    <div class="stack-card">
+      <div class="stack-name">Windows 11</div>
+      <div class="stack-role">Host OS</div>
+      <div class="stack-rationale">All development happens on Windows. Docker Desktop runs the data plane (Postgres, Qdrant, RabbitMQ, Redis, Ollama). WSL2 is assumed available; we may choose to run Python directly on Windows or inside WSL — to be decided in Phase 0.</div>
+    </div>
+    <div class="stack-card">
+      <div class="stack-name">Docker Desktop</div>
+      <div class="stack-role">Local Infrastructure</div>
+      <div class="stack-rationale">All stateful services run via <code>docker compose</code> from a single <code>compose.yaml</code>. No service is installed natively. This guarantees reproducibility and matches how the system would deploy in CI.</div>
+    </div>
+    <div class="stack-card">
+      <div class="stack-name">Cursor AI</div>
+      <div class="stack-role">Primary Editor</div>
+      <div class="stack-rationale">Used for navigation, refactoring, and rapid context queries. Code is always read and understood before being accepted — no blind generation.</div>
+    </div>
+    <div class="stack-card">
+      <div class="stack-name">Claude Code</div>
+      <div class="stack-role">Pair-Programming Assistant</div>
+      <div class="stack-rationale">Used to explain concepts, draft scaffolding, debug errors, and review code. This brief is the canonical context document for the project.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== 04 LLM STRATEGY ============== -->
+<section id="llm-strategy">
+  <div class="section-header">
+    <span class="section-number">§ 04</span>
+    <h2>LLM provider strategy.</h2>
+  </div>
+
+  <p class="lead">Start local with Ollama. Design provider-agnostic from day one. Earn the right to spend tokens.</p>
+
+  <p>Development begins with <strong>Ollama</strong> running locally as the LLM provider. The starting model is <code>llama3.1:8b-instruct</code> for generation and <code>nomic-embed-text</code> for embeddings — both run on CPU or a modest GPU, both produce sane output for development iteration, and both cost zero tokens. We expect quality to be visibly worse than a frontier API model; that is acceptable and arguably useful, because hard prompt-design and retrieval problems show up earlier when the model is weaker.</p>
+
+  <p>The architectural commitment is to a <code>LLMProvider</code> abstraction from the very first commit: a Protocol class with <code>generate()</code>, <code>stream()</code>, and <code>embed()</code> methods, and concrete implementations for Ollama and (later) Anthropic, OpenAI, and any other provider. The agent loop, retrieval layer, and API surface depend only on the Protocol — never on a concrete provider.</p>
+
+  <div class="callout callout-success">
+    <div class="callout-label">Cost Discipline</div>
+    <p>Frontier-model API calls are introduced only when (a) we have an evaluation harness to measure the quality delta, and (b) we have a defensible reason — usually that the agent's planning step needs better reasoning than the local model provides. Every API call must be logged with cost in Langfuse.</p>
+  </div>
+</section>
+
+<!-- ============== 05 TECH STACK ============== -->
+<section id="stack">
+  <div class="section-header">
+    <span class="section-number">§ 05</span>
+    <h2>Technology stack &amp; justifications.</h2>
+  </div>
+
+  <p>Each choice below is justified on technical merit. Where there is a genuine trade-off, the alternative and the reason for rejection are stated. Every component must earn its place.</p>
+
+  <div class="stack-grid">
+    <div class="stack-card">
+      <div class="stack-name">FastAPI</div>
+      <div class="stack-role">HTTP API Layer</div>
+      <div class="stack-rationale">Async-native, Pydantic v2 schemas double as agent structured-output contracts, SSE streaming via <code>StreamingResponse</code>, auto-generated OpenAPI. Behind Uvicorn workers with CPU-bound work delegated to Celery so the event loop never blocks.</div>
+      <div class="tradeoff">Alt: Litestar (lighter, faster routing) or Go (best throughput). FastAPI wins on ecosystem and team familiarity.</div>
+    </div>
+
+    <div class="stack-card">
+      <div class="stack-name">RabbitMQ + Celery</div>
+      <div class="stack-role">Async Task Queue</div>
+      <div class="stack-rationale">Durable broker with proper routing, DLQs, and priority queues for ingestion, scheduled feed pulls (Celery Beat), long agent runs, and eval execution. Boring, well-understood, production-proven.</div>
+      <div class="tradeoff">Alt: Temporal would be superior for the long agent-run workflow specifically (durable execution, native retries) — acknowledged trade-off, may revisit in Phase 6+.</div>
+    </div>
+
+    <div class="stack-card">
+      <div class="stack-name">LlamaIndex</div>
+      <div class="stack-role">Retrieval Primitives</div>
+      <div class="stack-rationale">Document parsing (readers), hierarchical and sentence-window indexers, query engines, NodePostprocessors for reranking. Owns the "data → vectors → ranked results" half of the system.</div>
+      <div class="tradeoff">Alt: LangChain retrievers — LlamaIndex has more mature hierarchical indexing and post-processors for this workload.</div>
+    </div>
+
+    <div class="stack-card">
+      <div class="stack-name">LangGraph</div>
+      <div class="stack-role">Agent Orchestration</div>
+      <div class="stack-rationale">Explicit state-machine graph for the agent loop (route → retrieve → grade → refine → generate → reflect). Checkpointing enables resumable runs; nodes are individually inspectable and traceable.</div>
+      <div class="tradeoff">Alt: Hand-rolled state machine — viable but loses checkpointing and interrupt patterns we'll want for human-in-the-loop later.</div>
+    </div>
+
+    <div class="stack-card">
+      <div class="stack-name">Qdrant</div>
+      <div class="stack-role">Vector Database</div>
+      <div class="stack-rationale">Pre-filtered HNSW search via payload indexes — decisive for threat intel's heavy metadata filtering (CVSS, dates, vendor, severity). Native sparse + dense hybrid via named vectors. First-class quantization and multi-tenancy patterns.</div>
+      <div class="tradeoff">Alt: pgvector — simpler ops, one Postgres; acceptable at smaller scale, especially with pgvectorscale. Weaviate — heavier, more opinionated. Chose Qdrant for filter performance and sparse + dense hybrid support.</div>
+    </div>
+
+    <div class="stack-card">
+      <div class="stack-name">PostgreSQL</div>
+      <div class="stack-role">Relational State</div>
+      <div class="stack-rationale">Tenant data, API keys, ingestion CDC table (tracks "what's been indexed and at what embedding version"), agent-run records, audit log. The system of record for everything that isn't a vector.</div>
+      <div class="tradeoff">Not optional. Vector DB is not a replacement for relational state.</div>
+    </div>
+
+    <div class="stack-card">
+      <div class="stack-name">Redis</div>
+      <div class="stack-role">Cache &amp; Rate Limit Store</div>
+      <div class="stack-rationale">Semantic and exact response caching, token-bucket rate limit counters, Celery result backend (optional), idempotency-key store. Sub-millisecond access patterns the agent loop needs.</div>
+      <div class="tradeoff">Could use Postgres for some of these; Redis is correct on latency grounds for the hot path.</div>
+    </div>
+
+    <div class="stack-card">
+      <div class="stack-name">Langfuse</div>
+      <div class="stack-role">LLM Observability</div>
+      <div class="stack-rationale">Full traces of every prompt, completion, tool call, and retrieval — with cost and latency per node. Prompt versioning, dataset management, eval runs. Self-hosted via Docker for data control.</div>
+      <div class="tradeoff">Alt: OpenTelemetry + custom span attributes — viable but loses LLM-specific UX (prompt diffing, cost rollups). Use both: Langfuse for LLM ops, OTel for infra.</div>
+    </div>
+
+    <div class="stack-card">
+      <div class="stack-name">Ollama</div>
+      <div class="stack-role">Local LLM Runtime</div>
+      <div class="stack-rationale">Local-first development. Zero per-token cost during the long build phase. Forces robust prompts and retrieval — weak models surface bad design earlier than strong ones hide it.</div>
+      <div class="tradeoff">Quality ceiling is real. Provider abstraction allows swapping to Anthropic/OpenAI per-stage when justified by evals.</div>
+    </div>
+
+    <div class="stack-card">
+      <div class="stack-name">Pydantic v2 + Pydantic Settings</div>
+      <div class="stack-role">Validation &amp; Config</div>
+      <div class="stack-rationale">Single source of truth for data shapes (API I/O, agent structured outputs, ingestion records) and environment configuration. Rust-backed validators are fast enough to use everywhere.</div>
+      <div class="tradeoff">Non-negotiable for a Python AI backend in 2026.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== 06 ARCHITECTURE DIAGRAM ============== -->
+<section id="architecture">
+  <div class="section-header">
+    <span class="section-number">§ 06</span>
+    <h2>System architecture.</h2>
+  </div>
+
+  <p>The system is organized into four horizontal planes — ingestion, API, agent, and data — with observability as a cross-cutting concern. Every line in the diagram represents an actual integration we will build.</p>
+
+  <div class="architecture">
+    <svg viewBox="0 0 960 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="System architecture diagram">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#d4a259"/>
+        </marker>
+        <marker id="arrow-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#5a8a8a"/>
+        </marker>
+        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1f1f29" stroke-width="0.5"/>
+        </pattern>
+      </defs>
+
+      <rect width="960" height="720" fill="#0a0a0d"/>
+      <rect width="960" height="720" fill="url(#grid)"/>
+
+      <!-- PLANE LABELS -->
+      <text x="20" y="50" font-family="JetBrains Mono, monospace" font-size="9" fill="#7a7868" letter-spacing="2">EXTERNAL SOURCES</text>
+      <text x="20" y="190" font-family="JetBrains Mono, monospace" font-size="9" fill="#7a7868" letter-spacing="2">INGESTION PLANE</text>
+      <text x="20" y="350" font-family="JetBrains Mono, monospace" font-size="9" fill="#7a7868" letter-spacing="2">API + AGENT PLANE</text>
+      <text x="20" y="560" font-family="JetBrains Mono, monospace" font-size="9" fill="#7a7868" letter-spacing="2">DATA PLANE</text>
+
+      <!-- DIVIDER LINES -->
+      <line x1="20" y1="60" x2="940" y2="60" stroke="#28283a" stroke-width="0.5" stroke-dasharray="2,4"/>
+      <line x1="20" y1="200" x2="940" y2="200" stroke="#28283a" stroke-width="0.5" stroke-dasharray="2,4"/>
+      <line x1="20" y1="360" x2="940" y2="360" stroke="#28283a" stroke-width="0.5" stroke-dasharray="2,4"/>
+      <line x1="20" y1="570" x2="940" y2="570" stroke="#28283a" stroke-width="0.5" stroke-dasharray="2,4"/>
+
+      <!-- EXTERNAL SOURCES (row 1) -->
+      <g transform="translate(60, 75)">
+        <rect width="140" height="80" fill="#16161e" stroke="#3a3a4d" stroke-width="1" rx="2"/>
+        <text x="70" y="32" text-anchor="middle" font-family="Fraunces, serif" font-size="14" fill="#ebe8d8">NVD / CVE</text>
+        <text x="70" y="52" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#7a7868">REST JSON Feed</text>
+      </g>
+      <g transform="translate(220, 75)">
+        <rect width="140" height="80" fill="#16161e" stroke="#3a3a4d" stroke-width="1" rx="2"/>
+        <text x="70" y="32" text-anchor="middle" font-family="Fraunces, serif" font-size="14" fill="#ebe8d8">MITRE ATT&amp;CK</text>
+        <text x="70" y="52" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#7a7868">STIX / TAXII</text>
+      </g>
+      <g transform="translate(380, 75)">
+        <rect width="140" height="80" fill="#16161e" stroke="#3a3a4d" stroke-width="1" rx="2"/>
+        <text x="70" y="32" text-anchor="middle" font-family="Fraunces, serif" font-size="14" fill="#ebe8d8">Vendor Advisories</text>
+        <text x="70" y="52" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#7a7868">RSS / Atom</text>
+      </g>
+      <g transform="translate(540, 75)">
+        <rect width="140" height="80" fill="#16161e" stroke="#3a3a4d" stroke-width="1" rx="2"/>
+        <text x="70" y="32" text-anchor="middle" font-family="Fraunces, serif" font-size="14" fill="#ebe8d8">Detection Rules</text>
+        <text x="70" y="52" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#7a7868">Sigma / YARA</text>
+      </g>
+      <g transform="translate(700, 75)">
+        <rect width="140" height="80" fill="#16161e" stroke="#3a3a4d" stroke-width="1" rx="2"/>
+        <text x="70" y="32" text-anchor="middle" font-family="Fraunces, serif" font-size="14" fill="#ebe8d8">Threat Reports</text>
+        <text x="70" y="52" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#7a7868">Public PDFs / HTML</text>
+      </g>
+
+      <!-- INGESTION PLANE (row 2) -->
+      <g transform="translate(60, 215)">
+        <rect width="200" height="110" fill="#16161e" stroke="#d4a259" stroke-width="1.5" rx="2"/>
+        <text x="100" y="28" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#d4a259" letter-spacing="2">SCHEDULER</text>
+        <text x="100" y="54" text-anchor="middle" font-family="Fraunces, serif" font-size="16" fill="#ebe8d8">Celery Beat</text>
+        <text x="100" y="80" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">Cron-style feed pulls</text>
+        <text x="100" y="96" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">Idempotent re-fetch</text>
+      </g>
+      <g transform="translate(310, 215)">
+        <rect width="200" height="110" fill="#16161e" stroke="#d4a259" stroke-width="1.5" rx="2"/>
+        <text x="100" y="28" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#d4a259" letter-spacing="2">BROKER</text>
+        <text x="100" y="54" text-anchor="middle" font-family="Fraunces, serif" font-size="16" fill="#ebe8d8">RabbitMQ</text>
+        <text x="100" y="80" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">Routing + DLQ</text>
+        <text x="100" y="96" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">Priority queues</text>
+      </g>
+      <g transform="translate(560, 215)">
+        <rect width="280" height="110" fill="#16161e" stroke="#d4a259" stroke-width="1.5" rx="2"/>
+        <text x="140" y="28" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#d4a259" letter-spacing="2">WORKERS</text>
+        <text x="140" y="54" text-anchor="middle" font-family="Fraunces, serif" font-size="16" fill="#ebe8d8">Celery + LlamaIndex</text>
+        <text x="140" y="80" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">parse → normalize → chunk</text>
+        <text x="140" y="96" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">→ embed → upsert</text>
+      </g>
+
+      <!-- API + AGENT PLANE (row 3) -->
+      <g transform="translate(60, 375)">
+        <rect width="180" height="170" fill="#16161e" stroke="#d4a259" stroke-width="1.5" rx="2"/>
+        <text x="90" y="28" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#d4a259" letter-spacing="2">GATEWAY</text>
+        <text x="90" y="56" text-anchor="middle" font-family="Fraunces, serif" font-size="16" fill="#ebe8d8">FastAPI</text>
+        <line x1="20" y1="68" x2="160" y2="68" stroke="#28283a" stroke-width="0.5"/>
+        <text x="90" y="88" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">SSE streaming</text>
+        <text x="90" y="106" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">Token-bucket rate limit</text>
+        <text x="90" y="124" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">Idempotency keys</text>
+        <text x="90" y="142" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">OAuth2 + scopes</text>
+        <text x="90" y="160" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">RFC 7807 errors</text>
+      </g>
+
+      <!-- LangGraph Agent box -->
+      <g transform="translate(290, 375)">
+        <rect width="380" height="170" fill="#16161e" stroke="#d4a259" stroke-width="1.5" rx="2"/>
+        <text x="190" y="28" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#d4a259" letter-spacing="2">AGENT ORCHESTRATOR — LangGraph</text>
+
+        <!-- Agent nodes as small boxes -->
+        <g transform="translate(20, 50)">
+          <rect width="62" height="36" fill="#1f1f29" stroke="#5a8a8a" stroke-width="1" rx="2"/>
+          <text x="31" y="22" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#ebe8d8">ROUTE</text>
+        </g>
+        <g transform="translate(92, 50)">
+          <rect width="62" height="36" fill="#1f1f29" stroke="#5a8a8a" stroke-width="1" rx="2"/>
+          <text x="31" y="22" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#ebe8d8">RETRIEVE</text>
+        </g>
+        <g transform="translate(164, 50)">
+          <rect width="62" height="36" fill="#1f1f29" stroke="#5a8a8a" stroke-width="1" rx="2"/>
+          <text x="31" y="22" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#ebe8d8">GRADE</text>
+        </g>
+        <g transform="translate(236, 50)">
+          <rect width="62" height="36" fill="#1f1f29" stroke="#5a8a8a" stroke-width="1" rx="2"/>
+          <text x="31" y="22" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#ebe8d8">REFINE</text>
+        </g>
+        <g transform="translate(308, 50)">
+          <rect width="62" height="36" fill="#1f1f29" stroke="#5a8a8a" stroke-width="1" rx="2"/>
+          <text x="31" y="22" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#ebe8d8">GENERATE</text>
+        </g>
+
+        <!-- arrows between agent nodes -->
+        <line x1="82" y1="68" x2="92" y2="68" stroke="#5a8a8a" stroke-width="1" marker-end="url(#arrow-muted)"/>
+        <line x1="154" y1="68" x2="164" y2="68" stroke="#5a8a8a" stroke-width="1" marker-end="url(#arrow-muted)"/>
+        <line x1="226" y1="68" x2="236" y2="68" stroke="#5a8a8a" stroke-width="1" marker-end="url(#arrow-muted)"/>
+        <line x1="298" y1="68" x2="308" y2="68" stroke="#5a8a8a" stroke-width="1" marker-end="url(#arrow-muted)"/>
+
+        <!-- loop-back arrow grade -> retrieve -->
+        <path d="M 195 86 Q 195 110 123 110 Q 123 95 123 86" fill="none" stroke="#c0533c" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrow-muted)"/>
+        <text x="195" y="125" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#c0533c">insufficient → re-retrieve</text>
+
+        <text x="190" y="158" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">checkpointed state · budget caps · tool registry</text>
+      </g>
+
+      <!-- LlamaIndex retrieval -->
+      <g transform="translate(720, 375)">
+        <rect width="180" height="170" fill="#16161e" stroke="#d4a259" stroke-width="1.5" rx="2"/>
+        <text x="90" y="28" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#d4a259" letter-spacing="2">RETRIEVAL</text>
+        <text x="90" y="56" text-anchor="middle" font-family="Fraunces, serif" font-size="16" fill="#ebe8d8">LlamaIndex</text>
+        <line x1="20" y1="68" x2="160" y2="68" stroke="#28283a" stroke-width="0.5"/>
+        <text x="90" y="88" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">Hybrid: BM25 + dense</text>
+        <text x="90" y="106" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">Cross-encoder rerank</text>
+        <text x="90" y="124" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">Query rewriting</text>
+        <text x="90" y="142" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">Hierarchical chunks</text>
+        <text x="90" y="160" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">Citation tracking</text>
+      </g>
+
+      <!-- DATA PLANE (row 4) -->
+      <g transform="translate(60, 585)">
+        <rect width="180" height="110" fill="#16161e" stroke="#5a8a8a" stroke-width="1.5" rx="2"/>
+        <text x="90" y="28" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#5a8a8a" letter-spacing="2">VECTORS</text>
+        <text x="90" y="56" text-anchor="middle" font-family="Fraunces, serif" font-size="16" fill="#ebe8d8">Qdrant</text>
+        <text x="90" y="78" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">Payload-filtered HNSW</text>
+        <text x="90" y="94" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">Sparse + dense vectors</text>
+      </g>
+      <g transform="translate(260, 585)">
+        <rect width="180" height="110" fill="#16161e" stroke="#5a8a8a" stroke-width="1.5" rx="2"/>
+        <text x="90" y="28" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#5a8a8a" letter-spacing="2">RELATIONAL</text>
+        <text x="90" y="56" text-anchor="middle" font-family="Fraunces, serif" font-size="16" fill="#ebe8d8">PostgreSQL</text>
+        <text x="90" y="78" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">Tenants · CDC · audit</text>
+        <text x="90" y="94" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">Agent run records</text>
+      </g>
+      <g transform="translate(460, 585)">
+        <rect width="180" height="110" fill="#16161e" stroke="#5a8a8a" stroke-width="1.5" rx="2"/>
+        <text x="90" y="28" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#5a8a8a" letter-spacing="2">CACHE</text>
+        <text x="90" y="56" text-anchor="middle" font-family="Fraunces, serif" font-size="16" fill="#ebe8d8">Redis</text>
+        <text x="90" y="78" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">Semantic + exact cache</text>
+        <text x="90" y="94" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">Rate-limit buckets</text>
+      </g>
+      <g transform="translate(660, 585)">
+        <rect width="180" height="110" fill="#16161e" stroke="#5a8a8a" stroke-width="1.5" rx="2"/>
+        <text x="90" y="28" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#5a8a8a" letter-spacing="2">LLM</text>
+        <text x="90" y="56" text-anchor="middle" font-family="Fraunces, serif" font-size="16" fill="#ebe8d8">Ollama</text>
+        <text x="90" y="78" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">llama3.1:8b-instruct</text>
+        <text x="90" y="94" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="11" fill="#b8b5a4">nomic-embed-text</text>
+      </g>
+
+      <!-- Observability vertical rail on right -->
+      <g transform="translate(870, 215)">
+        <rect width="70" height="480" fill="#1f1f29" stroke="#c0533c" stroke-width="1" stroke-dasharray="4,4" rx="2"/>
+        <text x="35" y="240" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#c0533c" letter-spacing="2" transform="rotate(-90, 35, 240)">LANGFUSE · OTEL · PROMETHEUS</text>
+      </g>
+
+      <!-- ARROWS connecting planes -->
+      <!-- External → Workers -->
+      <line x1="130" y1="155" x2="130" y2="215" stroke="#5a8a8a" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrow-muted)"/>
+      <line x1="290" y1="155" x2="290" y2="215" stroke="#5a8a8a" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrow-muted)"/>
+      <line x1="450" y1="155" x2="450" y2="215" stroke="#5a8a8a" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrow-muted)"/>
+      <line x1="610" y1="155" x2="610" y2="215" stroke="#5a8a8a" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrow-muted)"/>
+      <line x1="770" y1="155" x2="770" y2="215" stroke="#5a8a8a" stroke-width="1" stroke-dasharray="3,3" marker-end="url(#arrow-muted)"/>
+
+      <!-- Beat → RabbitMQ -->
+      <line x1="260" y1="270" x2="310" y2="270" stroke="#d4a259" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <!-- RabbitMQ → Workers -->
+      <line x1="510" y1="270" x2="560" y2="270" stroke="#d4a259" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+      <!-- Workers → Qdrant + Postgres -->
+      <line x1="650" y1="325" x2="200" y2="585" stroke="#5a8a8a" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="700" y1="325" x2="350" y2="585" stroke="#5a8a8a" stroke-width="1" stroke-dasharray="3,3"/>
+
+      <!-- FastAPI ↔ Agent -->
+      <line x1="240" y1="460" x2="290" y2="460" stroke="#d4a259" stroke-width="1.5" marker-end="url(#arrow)"/>
+      <!-- Agent ↔ Retrieval -->
+      <line x1="670" y1="460" x2="720" y2="460" stroke="#d4a259" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+      <!-- Retrieval → Qdrant (data plane) -->
+      <line x1="810" y1="545" x2="180" y2="585" stroke="#5a8a8a" stroke-width="1" stroke-dasharray="3,3"/>
+      <!-- Agent → LLM -->
+      <line x1="480" y1="545" x2="730" y2="585" stroke="#d4a259" stroke-width="1.5"/>
+      <!-- FastAPI → Postgres + Redis -->
+      <line x1="150" y1="545" x2="350" y2="585" stroke="#5a8a8a" stroke-width="1" stroke-dasharray="3,3"/>
+      <line x1="170" y1="545" x2="550" y2="585" stroke="#5a8a8a" stroke-width="1" stroke-dasharray="3,3"/>
+    </svg>
+    <div class="diagram-caption">FIG 01 — System Topology · Four Planes + Cross-Cutting Observability</div>
+  </div>
+</section>
+
+<!-- ============== 07 DEVELOPMENT PHASES ============== -->
+<section id="phases">
+  <div class="section-header">
+    <span class="section-number">§ 07</span>
+    <h2>Development phases.</h2>
+  </div>
+
+  <p>The build is sequenced so that every later phase rests on a verified earlier one. We do not move forward until the current phase's verification criteria pass. Skipping the "boring" early work is the most common way projects like this collapse.</p>
+
+  <div class="phases">
+
+    <div class="phase">
+      <div class="phase-marker">
+        <div class="phase-id">PHASE</div>
+        <div class="phase-num">00</div>
+      </div>
+      <div class="phase-content">
+        <h3>Foundations</h3>
+        <p>Repo scaffolding with <code>uv</code> for dependency management. <code>compose.yaml</code> for Postgres, Qdrant, RabbitMQ, Redis, Ollama, Langfuse. Pydantic Settings for env config. Structured logging (<code>structlog</code>). FastAPI skeleton with health/ready/live endpoints. Pre-commit hooks (ruff, mypy, prettier). GitHub Actions CI scaffold. <code>NOTES.md</code> and a starter <code>README.md</code>.</p>
+        <span class="phase-deliverable">DELIVERABLE · `docker compose up` brings the full stack to green health</span>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-marker">
+        <div class="phase-id">PHASE</div>
+        <div class="phase-num">01</div>
+      </div>
+      <div class="phase-content">
+        <h3>Ingestion &amp; Indexing</h3>
+        <p>Single-source ingestion pipeline end-to-end against the NVD/CVE feed. Celery worker fetches, normalizes to a Pydantic schema, content-hashes for idempotency, chunks via LlamaIndex, embeds with Ollama's <code>nomic-embed-text</code>, upserts to Qdrant with full payload metadata. Postgres CDC table tracks ingestion state and embedding-model version. Manual retrieval queries via a CLI to verify quality before any API exists.</p>
+        <span class="phase-deliverable">DELIVERABLE · Queryable Qdrant index of ≥10k CVE records with payload filters</span>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-marker">
+        <div class="phase-id">PHASE</div>
+        <div class="phase-num">02</div>
+      </div>
+      <div class="phase-content">
+        <h3>Naive RAG Baseline</h3>
+        <p>Simplest viable query → embed → top-k retrieve → stuff prompt → generate. Wrapped in a FastAPI endpoint with SSE streaming. The point is not quality — it is to establish a <em>baseline</em> against which every later improvement is measured. We hand-curate a 30–50 question golden set at this phase and record baseline scores.</p>
+        <span class="phase-deliverable">DELIVERABLE · `POST /v1/query` returns streamed answers · baseline eval recorded</span>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-marker">
+        <div class="phase-id">PHASE</div>
+        <div class="phase-num">03</div>
+      </div>
+      <div class="phase-content">
+        <h3>Retrieval Quality</h3>
+        <p>Hybrid retrieval (sparse + dense via Qdrant named vectors). Cross-encoder reranking via a local <code>sentence-transformers</code> model. Query rewriting and decomposition. Each addition is measured against the baseline — the eval table grows row by row.</p>
+        <span class="phase-deliverable">DELIVERABLE · Measured improvements in faithfulness and context recall vs. baseline</span>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-marker">
+        <div class="phase-id">PHASE</div>
+        <div class="phase-num">04</div>
+      </div>
+      <div class="phase-content">
+        <h3>The Agentic Layer</h3>
+        <p>LangGraph state machine: ROUTE → RETRIEVE → GRADE → REFINE → GENERATE → REFLECT. Tool registry (vector retrieval, SQL over CVE metadata, optional web fresh). Budget enforcement — hard caps on max steps, tokens, cost. Structured outputs via Pydantic. Persistent agent state with checkpointing.</p>
+        <span class="phase-deliverable">DELIVERABLE · Multi-hop queries succeed where naive RAG fails · all traces inspectable</span>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-marker">
+        <div class="phase-id">PHASE</div>
+        <div class="phase-num">05</div>
+      </div>
+      <div class="phase-content">
+        <h3>Observability &amp; Evaluation</h3>
+        <p>Full Langfuse integration — every node, prompt, completion, tool call traced with cost and latency. Prompt versioning. Golden-set evaluation runs in CI on every merge. Regression detection that fails the build on quality drops. Custom dashboards for cost per query and end-to-end latency budget breakdown.</p>
+        <span class="phase-deliverable">DELIVERABLE · CI fails on eval regression · Langfuse dashboards documented in README</span>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-marker">
+        <div class="phase-id">PHASE</div>
+        <div class="phase-num">06</div>
+      </div>
+      <div class="phase-content">
+        <h3>Production Hardening</h3>
+        <p>Per-tenant rate limiting with token-bucket in Redis. Multi-tenant isolation in Qdrant (collection-per-tenant) and Postgres (row-level). OAuth2 with scoped bearer tokens. Idempotency keys. RFC 7807 problem-details. Async agent-run resource pattern (POST returns 202 + run ID; GET polls or webhook callback). OpenTelemetry traces. Prometheus <code>/metrics</code>. Graceful shutdown.</p>
+        <span class="phase-deliverable">DELIVERABLE · Two-tenant load test passes with isolation verified</span>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-marker">
+        <div class="phase-id">PHASE</div>
+        <div class="phase-num">07</div>
+      </div>
+      <div class="phase-content">
+        <h3>Testing &amp; Optimization</h3>
+        <p>Pytest with async fixtures. Integration tests via testcontainers. Load tests with k6 producing the latency chart in the README. Profiling and bottleneck analysis. Semantic caching layer. Embedding-model upgrade path exercised end-to-end. The eval-results table and load-test chart are finalized as project deliverables.</p>
+        <span class="phase-deliverable">DELIVERABLE · p95 latency chart · cost-per-query dashboard · ≥80% test coverage</span>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-marker">
+        <div class="phase-id">PHASE</div>
+        <div class="phase-num">08</div>
+      </div>
+      <div class="phase-content">
+        <h3>Documentation &amp; Polish</h3>
+        <p>Final README rewrite with problem statement, measurable outcomes, architecture diagram, and one-command demo. Recorded video walkthrough or live deployment. Incident postmortem entry describing one real failure encountered and fixed.</p>
+        <span class="phase-deliverable">DELIVERABLE · Documentation complete · one-command demo working end-to-end</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============== 08 METHODOLOGY ============== -->
+<section id="methodology">
+  <div class="section-header">
+    <span class="section-number">§ 08</span>
+    <h2>Development methodology.</h2>
+  </div>
+
+  <p class="lead">Each phase is built incrementally. Every step is verified before moving forward. The commit history documents the build progression as a sequence of working states.</p>
+
+  <p>The approach for each step is consistent: understand the rationale before writing code, implement against a clear specification, verify with the exact command and expected output, then commit. No step advances until its verification passes.</p>
+
+  <div class="callout callout-success">
+    <div class="callout-label">Incremental delivery</div>
+    <p>Three phases done properly — with real verification criteria, clean commits, and documented trade-offs — produce more value than eight phases done superficially. The phase sequencing in §07 reflects this: each phase's deliverable is a concrete, runnable artifact, not just merged code.</p>
+  </div>
+</section>
+
+<!-- ============== 09 GROUND RULES ============== -->
+<section id="rules">
+  <div class="section-header">
+    <span class="section-number">§ 09</span>
+    <h2>Ground rules.</h2>
+  </div>
+
+  <ol class="rules-list">
+    <li>
+      <span class="rule-title">Commit after every working step.</span>
+      <span class="rule-body">Each verified step is its own commit, with a clear message. By the end the git history reads as a complete development journal. Do not squash.</span>
+    </li>
+    <li>
+      <span class="rule-title">Maintain <code>NOTES.md</code> in the repo.</span>
+      <span class="rule-body">A running log of what was learned, what surprised, and what would be done differently. Invaluable for understanding decisions made months later. Raw material for future blog posts.</span>
+    </li>
+    <li>
+      <span class="rule-title">Do not skip "boring" steps.</span>
+      <span class="rule-body">Pre-commit hooks, CI from day one, structured logging, type checking — these are standard engineering discipline, not optional extras. If a step feels skippable, surface it explicitly before deferring.</span>
+    </li>
+    <li>
+      <span class="rule-title">Stop when a concept is unclear.</span>
+      <span class="rule-body">"Wait, why does HNSW need pre-filtering specifically?" is the right kind of question. Better to understand the concept properly before building on it than to paper over a gap that surfaces later.</span>
+    </li>
+    <li>
+      <span class="rule-title">Realistic pace.</span>
+      <span class="rule-body">60–100 hours of focused work over 6–10 weeks at a few evenings per week. Compression to a weekend produces copy-paste. Three phases done properly outperform eight done superficially.</span>
+    </li>
+    <li>
+      <span class="rule-title">When frustrated, say so.</span>
+      <span class="rule-body">Frustration is a signal to slow down, change angle of explanation, or simplify the step — not to heroically push through and ChatGPT the answer. The goal is understanding, not endurance.</span>
+    </li>
+  </ol>
+</section>
+
+<!-- ============== 10 RESUMPTION PROTOCOL ============== -->
+<section id="resumption">
+  <div class="section-header">
+    <span class="section-number">§ 10</span>
+    <h2>Resumption protocol.</h2>
+  </div>
+
+  <p>This document is the single source of truth for the project. To re-orient after any interruption, check three things: the current phase status in <code>CLAUDE.md</code>, the most recent commit in <code>git log</code>, and any open notes in <code>NOTES.md</code>.</p>
+
+  <h4>Orientation Checklist</h4>
+  <pre><code><span class="pre-key">current_phase</span>: <span class="pre-val">check CLAUDE.md phase status</span>
+<span class="pre-key">last_commit</span>:   <span class="pre-val">git log --oneline -5</span>
+<span class="pre-key">service_health</span>: <span class="pre-val">docker compose ps</span>
+<span class="pre-key">open_items</span>:    <span class="pre-val">check NOTES.md for unresolved questions</span></code></pre>
+
+  <div class="callout callout-success">
+    <div class="callout-label">State invariant</div>
+    <p>Every phase ends with a passing verification step and a clean commit. If a phase is in progress, the last clean commit marks where verified state ends — resume from there, not from unverified working-directory changes.</p>
+  </div>
+</section>
+
+<!-- ============== 11 PORTFOLIO ARTIFACTS ============== -->
+<section id="artifacts">
+  <div class="section-header">
+    <span class="section-number">§ 11</span>
+    <h2>Project deliverables.</h2>
+  </div>
+
+  <p>By the end of the build, the repository contains the following concrete artifacts:</p>
+
+  <div class="stack-grid">
+    <div class="stack-card">
+      <div class="stack-name">Eval Iteration Table</div>
+      <div class="stack-role">README · TABLE</div>
+      <div class="stack-rationale">Rows showing version-by-version improvements: <em>baseline → hybrid → rerank → agentic → cached</em> with faithfulness, context recall, p95 latency, and cost per query at each step. The clearest demonstration of systematic retrieval improvement.</div>
+    </div>
+    <div class="stack-card">
+      <div class="stack-name">Load Test Report</div>
+      <div class="stack-role">README · CHART</div>
+      <div class="stack-rationale">k6 results showing p50/p95/p99 latency under increasing concurrency, with the cliff identified and explained.</div>
+    </div>
+    <div class="stack-card">
+      <div class="stack-name">Incident Postmortem</div>
+      <div class="stack-role">docs/postmortem-001.md</div>
+      <div class="stack-rationale">A real failure encountered during the build — a hallucinated citation, a prompt injection, a context-overflow — documented in proper postmortem format: timeline, impact, root cause, fix, prevention.</div>
+    </div>
+    <div class="stack-card">
+      <div class="stack-name">Architecture Diagram</div>
+      <div class="stack-role">docs/architecture.svg</div>
+      <div class="stack-rationale">Refined version of FIG 01 in this brief, regenerated from the actual system at completion.</div>
+    </div>
+    <div class="stack-card">
+      <div class="stack-name">One-Command Demo</div>
+      <div class="stack-role">make demo</div>
+      <div class="stack-rationale">A single command brings up the full stack, ingests a sample CVE batch, and answers a canonical query end-to-end. Reviewers spend ten seconds on a README; a working demo earns minutes.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== 12 REFERENCES ============== -->
+<section id="references">
+  <div class="section-header">
+    <span class="section-number">§ 12</span>
+    <h2>References &amp; further reading.</h2>
+  </div>
+
+  <p>Primary reading curated for this project. Read both before Phase 02 begins.</p>
+
+  <div class="references">
+    <div class="reference">
+      <a href="https://medium.com/@shubhodaya.hampiholi/building-production-grade-rag-systems-architecture-evaluation-and-advanced-design-patterns-1d9d649aebfa">
+        <span class="reference-title">Building Production-Grade RAG Systems: Architecture, Evaluation, and Advanced Design Patterns</span>
+      </a>
+      <div class="reference-source">Shubhodaya Hampiholi · Medium · 2026</div>
+      <div class="reference-note">Latency-budget decomposition, evaluation methodology, and the hybrid → graph → agentic progression in roughly the order this brief sequences the build. Treats RAG as a distributed-systems problem rather than a prompt pattern. Read once before Phase 02; reread during Phase 05.</div>
+    </div>
+    <div class="reference">
+      <a href="https://labs.adaline.ai/p/building-production-ready-agentic">
+        <span class="reference-title">Building Production-Ready Agentic RAG Systems</span>
+      </a>
+      <div class="reference-source">Adaline Labs · 2026</div>
+      <div class="reference-note">Focused on the orchestration layer — query routing, tool fallback, observability. Documents concrete numbers (e.g., query routing saves ~40% on cost, ~35% on latency through intent classification) that are useful benchmarks for the README.</div>
+    </div>
+    <div class="reference">
+      <a href="https://blog.modelcontextprotocol.io/posts/2026-mcp-roadmap/">
+        <span class="reference-title">The 2026 MCP Roadmap</span>
+      </a>
+      <div class="reference-source">Model Context Protocol Blog · 2026</div>
+      <div class="reference-note">Not directly used in the build, but essential context. The agent tools in Phase 04 are designed to be MCP-compatible later — provider-agnostic tool definitions, structured I/O, scoped permissions.</div>
+    </div>
+    <div class="reference">
+      <a href="https://qdrant.tech/documentation/concepts/filtering/">
+        <span class="reference-title">Qdrant — Filtering &amp; Payload Indexes</span>
+      </a>
+      <div class="reference-source">Qdrant Docs</div>
+      <div class="reference-note">The technical backbone of the vector-DB choice. Understanding pre-filtered HNSW vs. post-filtered search is essential to the vector-DB design rationale.</div>
+    </div>
+    <div class="reference">
+      <a href="https://langchain-ai.github.io/langgraph/">
+        <span class="reference-title">LangGraph Documentation</span>
+      </a>
+      <div class="reference-source">LangChain</div>
+      <div class="reference-note">State, nodes, edges, checkpointing, interrupts. Read the conceptual guide before Phase 04 begins.</div>
+    </div>
+    <div class="reference">
+      <a href="https://langfuse.com/docs">
+        <span class="reference-title">Langfuse Documentation</span>
+      </a>
+      <div class="reference-source">Langfuse</div>
+      <div class="reference-note">Self-hosting via Docker, SDK integration patterns, prompt management, datasets, evals. Read before Phase 05.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============== FOOTER ============== -->
+<footer>
+  <div class="divider"></div>
+  <div>END OF BRIEF · v1.0</div>
+</footer>
+
+</div>
+</body>
+</html>

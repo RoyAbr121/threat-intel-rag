@@ -60,7 +60,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://threat_rag:threat_rag@postgres:5432/threat_rag
+      DATABASE_URL: postgresql://threat_rag:threat_rag@postgres:5432/langfuse
       NEXTAUTH_SECRET: dev-secret-change-in-prod
       NEXTAUTH_URL: http://localhost:3000
       SALT: dev-salt-change-in-prod
