@@ -21,12 +21,12 @@ dependencies = [
     "tenacity>=9.0.0",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
     "httpx>=0.28.0",
-    "ruff>=0.9.0",
+    "ruff>=0.15.17",
     "mypy>=1.13.0",
     "bandit[toml]>=1.8.0",
     "pre-commit>=4.0.0",
@@ -42,6 +42,7 @@ packages = ["src/threat_intel_rag"]
 [tool.ruff]
 line-length = 88
 target-version = "py312"
+exclude = ["alembic/"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
@@ -53,6 +54,7 @@ known-first-party = ["threat_intel_rag"]
 python_version = "3.12"
 strict = true
 ignore_missing_imports = true
+exclude = ["alembic/"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -60,3 +62,6 @@ testpaths = ["tests"]
 
 [tool.bandit]
 skips = ["B101"]
+
+[project.scripts]
+threat-intel-rag = "threat_intel_rag.cli:main"
