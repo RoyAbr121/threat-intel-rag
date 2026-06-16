@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from typing import cast
 
 import httpx
 from qdrant_client import QdrantClient
@@ -29,14 +28,11 @@ def search(query: str, top_k: int = 5) -> list[ScoredPoint]:
     vector = asyncio.run(embed_query(query))
     client = QdrantClient(host=settings.qdrant_host, port=settings.qdrant_port)
 
-    return cast(
-        list[ScoredPoint],
-        client.query_points(
-            collection_name=COLLECTION_NAME,
-            query=vector,
-            limit=top_k,
-        ).points,
-    )
+    return client.query_points(
+        collection_name=COLLECTION_NAME,
+        query=vector,
+        limit=top_k,
+    ).points
 
 
 def main() -> None:
