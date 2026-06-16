@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     rabbitmq_url: str = "amqp://guest:guest@localhost:5672/"
     ollama_base_url: str = "http://localhost:11434"
     ollama_embed_model: str = "nomic-embed-text"
-    ollama_llm_model: str = "llama3.1:8b-instruct"
+    ollama_llm_model: str = "llama3.1"
 
 
 settings = Settings()
