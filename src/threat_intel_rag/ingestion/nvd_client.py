@@ -80,7 +80,10 @@ class NvdClient:
         wait=wait_exponential(multiplier=1, min=4, max=30),
     )
     async def _fetch_page(
-        self, start_index: int, start_date: datetime | None = None
+        self,
+        start_index: int,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
     ) -> NvdResponse:
         params: dict[str, str | int] = {
             "startIndex": start_index,
@@ -90,18 +93,23 @@ class NvdClient:
         if start_date is not None:
             params["pubStartDate"] = start_date.strftime("%Y-%m-%dT%H:%M:%S.000")
 
+        if end_date is not None:
+            params["pubEndDate"] = end_date.strftime("%Y-%m-%dT%H:%M:%S.000")
+
         response = await self._client.get(self.BASE_URL, params=params)
         response.raise_for_status()
 
         return NvdResponse.model_validate(response.json())
 
     async def iter_cves(
-        self, start_date: datetime | None = None
+        self, start_date: datetime | None = None, end_date: datetime | None = None
     ) -> AsyncIterator[CveDetail]:
         start = 0
 
         while True:
-            page = await self._fetch_page(start, start_date=start_date)
+            page = await self._fetch_page(
+                start, start_date=start_date, end_date=end_date
+            )
 
             for item in page.vulnerabilities:
                 yield item.cve

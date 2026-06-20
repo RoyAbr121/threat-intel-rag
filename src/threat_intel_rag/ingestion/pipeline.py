@@ -53,7 +53,9 @@ async def embed(text: str) -> list[float]:
 
 
 async def ingest_cves(
-    limit: int | None = None, start_date: datetime | None = None
+    limit: int | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
 ) -> None:
     engine = create_async_engine(settings.postgres_dsn)
     AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
@@ -62,7 +64,7 @@ async def ingest_cves(
     processed = 0
 
     async with NvdClient() as nvd:
-        async for cve in nvd.iter_cves(start_date=start_date):
+        async for cve in nvd.iter_cves(start_date=start_date, end_date=end_date):
             if limit and processed >= limit:
                 break
 

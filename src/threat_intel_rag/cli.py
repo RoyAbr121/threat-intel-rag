@@ -50,6 +50,13 @@ def main() -> None:
         help="Ingest only CVEs published on or after this date (YYYY-MM-DD)",
     )
 
+    ingest_parser.add_argument(
+        "--end-date",
+        type=lambda s: datetime.fromisoformat(s),
+        default=None,
+        help="Ingest only CVEs published on or before this date (YYYY-MM-DD)",
+    )
+
     search_parser = subparsers.add_parser("search", help="Search CVE index")
     search_parser.add_argument("query", type=str)
     search_parser.add_argument("--top-k", type=int, default=5)
@@ -57,7 +64,11 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "ingest":
-        asyncio.run(ingest_cves(limit=args.limit, start_date=args.start_date))
+        asyncio.run(
+            ingest_cves(
+                limit=args.limit, start_date=args.start_date, end_date=args.end_date
+            )
+        )
         print("Ingestion complete.")
 
     elif args.command == "search":
