@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncIterator
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import httpx
 from pydantic import BaseModel, Field
@@ -67,13 +67,33 @@ class NvdClient:
 
     def __init__(self, api_key: str | None = None) -> None:
         headers = {"apiKey": api_key} if api_key else {}
-        self._client = httpx.AsyncClient(headers=headers, timeout=30.0)
+        self._client = httpx.AsyncClient(headers=headers, timeout=60.0)
 
     async def __aenter__(self) -> NvdClient:
         return self
 
     async def __aexit__(self, *_: object) -> None:
         await self._client.aclose()
+
+    async def _paginate(
+        self, start_date: datetime | None, end_date: datetime | None
+    ) -> AsyncIterator[CveDetail]:
+        start = 0
+
+        while True:
+            page = await self._fetch_page(
+                start, start_date=start_date, end_date=end_date
+            )
+
+            for item in page.vulnerabilities:
+                yield item.cve
+
+            start += len(page.vulnerabilities)
+
+            if start >= page.total_results:
+                break
+
+            await asyncio.sleep(6)
 
     @retry(
         stop=stop_after_attempt(5),
@@ -104,19 +124,20 @@ class NvdClient:
     async def iter_cves(
         self, start_date: datetime | None = None, end_date: datetime | None = None
     ) -> AsyncIterator[CveDetail]:
-        start = 0
+        if start_date is None:
+            async for cve in self._paginate(None, None):
+                yield cve
 
-        while True:
-            page = await self._fetch_page(
-                start, start_date=start_date, end_date=end_date
-            )
+            return
 
-            for item in page.vulnerabilities:
-                yield item.cve
+        ceiling = end_date or datetime.now()
+        window_size = timedelta(days=119)
+        window_start = start_date
 
-            start += len(page.vulnerabilities)
+        while window_start < ceiling:
+            window_end = min(window_start + window_size, ceiling)
 
-            if start >= page.total_results:
-                break
+            async for cve in self._paginate(window_start, window_end):
+                yield cve
 
-            await asyncio.sleep(6)
+            window_start = window_end
