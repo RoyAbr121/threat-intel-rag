@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from datetime import datetime
 
 import httpx
 from qdrant_client import QdrantClient
@@ -42,6 +43,13 @@ def main() -> None:
     ingest_parser = subparsers.add_parser("ingest", help="Run CVE ingestion")
     ingest_parser.add_argument("--limit", type=int, default=None)
 
+    ingest_parser.add_argument(
+        "--start-date",
+        type=lambda s: datetime.fromisoformat(s),
+        default=None,
+        help="Ingest only CVEs published on or after this date (YYYY-MM-DD)",
+    )
+
     search_parser = subparsers.add_parser("search", help="Search CVE index")
     search_parser.add_argument("query", type=str)
     search_parser.add_argument("--top-k", type=int, default=5)
@@ -49,11 +57,12 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "ingest":
-        asyncio.run(ingest_cves(limit=args.limit))
+        asyncio.run(ingest_cves(limit=args.limit, start_date=args.start_date))
         print("Ingestion complete.")
 
     elif args.command == "search":
         results = search(args.query, top_k=args.top_k)
+
         for hit in results:
             payload = hit.payload or {}
             print(f"\n[{payload.get('cve_id')}] score={hit.score:.4f}")

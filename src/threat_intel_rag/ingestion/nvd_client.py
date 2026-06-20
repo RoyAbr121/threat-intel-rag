@@ -75,28 +75,33 @@ class NvdClient:
     async def __aexit__(self, *_: object) -> None:
         await self._client.aclose()
 
-    @retry(  # type: ignore[misc]
+    @retry(
         stop=stop_after_attempt(5),
         wait=wait_exponential(multiplier=1, min=4, max=30),
     )
-    async def _fetch_page(self, start_index: int) -> NvdResponse:
-        response = await self._client.get(
-            self.BASE_URL,
-            params={
-                "startIndex": start_index,
-                "resultsPerPage": self.PAGE_SIZE,
-            },
-        )
+    async def _fetch_page(
+        self, start_index: int, start_date: datetime | None = None
+    ) -> NvdResponse:
+        params: dict[str, str | int] = {
+            "startIndex": start_index,
+            "resultsPerPage": self.PAGE_SIZE,
+        }
 
+        if start_date is not None:
+            params["pubStartDate"] = start_date.strftime("%Y-%m-%dT%H:%M:%S.000")
+
+        response = await self._client.get(self.BASE_URL, params=params)
         response.raise_for_status()
 
         return NvdResponse.model_validate(response.json())
 
-    async def iter_cves(self) -> AsyncIterator[CveDetail]:
+    async def iter_cves(
+        self, start_date: datetime | None = None
+    ) -> AsyncIterator[CveDetail]:
         start = 0
 
         while True:
-            page = await self._fetch_page(start)
+            page = await self._fetch_page(start, start_date=start_date)
 
             for item in page.vulnerabilities:
                 yield item.cve

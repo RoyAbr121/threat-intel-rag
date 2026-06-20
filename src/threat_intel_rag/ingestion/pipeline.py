@@ -52,7 +52,9 @@ async def embed(text: str) -> list[float]:
         return list(response.json()["embedding"])
 
 
-async def ingest_cves(limit: int | None = None) -> None:
+async def ingest_cves(
+    limit: int | None = None, start_date: datetime | None = None
+) -> None:
     engine = create_async_engine(settings.postgres_dsn)
     AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
     qdrant = QdrantClient(host=settings.qdrant_host, port=settings.qdrant_port)
@@ -60,7 +62,7 @@ async def ingest_cves(limit: int | None = None) -> None:
     processed = 0
 
     async with NvdClient() as nvd:
-        async for cve in nvd.iter_cves():
+        async for cve in nvd.iter_cves(start_date=start_date):
             if limit and processed >= limit:
                 break
 
