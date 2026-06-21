@@ -96,8 +96,8 @@ class NvdClient:
             await asyncio.sleep(6)
 
     @retry(
-        stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=1, min=4, max=30),
+        stop=stop_after_attempt(10),
+        wait=wait_exponential(multiplier=1, min=10, max=120),
     )
     async def _fetch_page(
         self,
