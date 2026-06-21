@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import AsyncGenerator
 
 from qdrant_client import QdrantClient
+from qdrant_client.models import ScoredPoint
 
 from threat_intel_rag.config import settings
 from threat_intel_rag.ingestion.qdrant_setup import COLLECTION_NAME
@@ -21,20 +22,26 @@ Question: {question}
 Answer:"""
 
 
-async def rag_stream(
+async def retrieve(
     question: str,
     provider: LLMProvider,
     top_k: int = 5,
-) -> AsyncGenerator[str, None]:
+) -> list[ScoredPoint]:
     vector = await provider.embed(question)
     qdrant = QdrantClient(host=settings.qdrant_host, port=settings.qdrant_port)
 
-    hits = qdrant.query_points(
+    return qdrant.query_points(
         collection_name=COLLECTION_NAME,
         query=vector,
         limit=top_k,
     ).points
 
+
+async def stream_answer(
+    question: str,
+    hits: list[ScoredPoint],
+    provider: LLMProvider,
+) -> AsyncGenerator[str, None]:
     context_parts = []
 
     for hit in hits:
@@ -47,4 +54,15 @@ async def rag_stream(
     prompt = _PROMPT_TEMPLATE.format(context=context, question=question)
 
     async for token in provider.stream(prompt):
+        yield token
+
+
+async def rag_stream(
+    question: str,
+    provider: LLMProvider,
+    top_k: int = 5,
+) -> AsyncGenerator[str, None]:
+    hits = await retrieve(question, provider, top_k)
+
+    async for token in stream_answer(question, hits, provider):
         yield token

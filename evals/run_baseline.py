@@ -7,22 +7,25 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from threat_intel_rag.llm.ollama import OllamaProvider
-from threat_intel_rag.query.rag import rag_stream
+from threat_intel_rag.query.rag import retrieve, stream_answer
 
 EVALS_DIR = Path(__file__).parent
 QUESTIONS_PATH = EVALS_DIR / "golden_questions.jsonl"
 RESULTS_PATH = EVALS_DIR / "baseline_results.jsonl"
 
 
-async def run_one(provider: OllamaProvider, question: str) -> str:
+async def run_one(provider: OllamaProvider, question: str) -> tuple[str, list[str]]:
+    hits = await retrieve(question, provider, top_k=5)
+    retrieved_cves = [(hit.payload or {}).get("cve_id", "") for hit in hits]
+
     tokens: list[str] = []
 
-    async for token in rag_stream(question, provider, top_k=5):
+    async for token in stream_answer(question, hits, provider):
         tokens.append(token)
         print(token, end="", flush=True)
 
     print()
-    return "".join(tokens)
+    return "".join(tokens), retrieved_cves
 
 
 async def main() -> None:
@@ -36,9 +39,9 @@ async def main() -> None:
     results = []
 
     for q in questions:
-        print(f"\n{'=' * 60}")
-        print(f"[{q['id']}] ({q['difficulty']}) {q['question']}")
-        print("=" * 60)
+        q_str = f"[{q['id']}] ({q['difficulty']}) {q['question']}"
+        q_line = f"{'=' * len(q_str)}"
+        print(f"\n{q_line}\n{q_str}\n{q_line}")
         answer = await run_one(provider, q["question"])
 
         results.append(
@@ -73,8 +76,8 @@ def score() -> None:
         if not expected:
             continue
 
-        answer = r["answer"].upper()
-        hit = all(cve.upper() in answer for cve in expected)
+        retrieved = [c.upper() for c in r.get("retrieved_cves", [])]
+        hit = all(cve.upper() in retrieved for cve in expected)
         by_difficulty[r["difficulty"]].append(hit)
         status = "HIT" if hit else "MISS"
         print(f"  [{status}] {r['id']} — expected: {expected}")
