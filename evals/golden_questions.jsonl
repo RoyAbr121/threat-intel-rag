@@ -1,0 +1,50 @@
+{"id": "q01", "question": "What is CVE-2021-44228 and what systems does it affect?", "expected_cves": ["CVE-2021-44228"], "category": "cve_lookup", "difficulty": "easy"}
+{"id": "q02", "question": "What is CVE-2014-0160?", "expected_cves": ["CVE-2014-0160"], "category": "cve_lookup", "difficulty": "easy"}
+{"id": "q03", "question": "What is CVE-2014-6271?", "expected_cves": ["CVE-2014-6271"], "category": "cve_lookup", "difficulty": "easy"}
+{"id": "q04", "question": "What is CVE-2016-5195?", "expected_cves": ["CVE-2016-5195"], "category": "cve_lookup", "difficulty": "easy"}
+{"id": "q05", "question": "What is CVE-2019-0708?", "expected_cves": ["CVE-2019-0708"], "category": "cve_lookup", "difficulty": "easy"}
+{"id": "q06", "question": "What is CVE-2021-26855?", "expected_cves": ["CVE-2021-26855"], "category": "cve_lookup", "difficulty": "easy"}
+{"id": "q07", "question": "What is CVE-2017-5638?", "expected_cves": ["CVE-2017-5638"], "category": "cve_lookup", "difficulty": "easy"}
+{"id": "q08", "question": "What is CVE-2020-1472?", "expected_cves": ["CVE-2020-1472"], "category": "cve_lookup", "difficulty": "easy"}
+{"id": "q09", "question": "What is CVE-2021-34527?", "expected_cves": ["CVE-2021-34527"], "category": "cve_lookup", "difficulty": "easy"}
+{"id": "q10", "question": "What is CVE-2022-22965?", "expected_cves": ["CVE-2022-22965"], "category": "cve_lookup", "difficulty": "easy"}
+{"id": "q11", "question": "Which CVE is known as Log4Shell?", "expected_cves": ["CVE-2021-44228"], "category": "named_vuln", "difficulty": "easy"}
+{"id": "q12", "question": "Which CVE identifier corresponds to Heartbleed?", "expected_cves": ["CVE-2014-0160"], "category": "named_vuln", "difficulty": "easy"}
+{"id": "q13", "question": "Which CVE is known as Shellshock?", "expected_cves": ["CVE-2014-6271"], "category": "named_vuln", "difficulty": "easy"}
+{"id": "q14", "question": "Which CVE is known as EternalBlue?", "expected_cves": ["CVE-2017-0144"], "category": "named_vuln", "difficulty": "easy"}
+{"id": "q15", "question": "Which CVE is known as BlueKeep?", "expected_cves": ["CVE-2019-0708"], "category": "named_vuln", "difficulty": "easy"}
+{"id": "q16", "question": "Which CVE is the Dirty COW vulnerability?", "expected_cves": ["CVE-2016-5195"], "category": "named_vuln", "difficulty": "easy"}
+{"id": "q17", "question": "Which CVE is known as PrintNightmare?", "expected_cves": ["CVE-2021-34527"], "category": "named_vuln", "difficulty": "easy"}
+{"id": "q18", "question": "Which CVE is known as Zerologon?", "expected_cves": ["CVE-2020-1472"], "category": "named_vuln", "difficulty": "easy"}
+{"id": "q19", "question": "Which CVE is known as PwnKit?", "expected_cves": ["CVE-2021-4034"], "category": "named_vuln", "difficulty": "easy"}
+{"id": "q20", "question": "Which CVE is known as Spring4Shell?", "expected_cves": ["CVE-2022-22965"], "category": "named_vuln", "difficulty": "easy"}
+{"id": "q21", "question": "What remote code execution vulnerabilities affect Apache Log4j?", "expected_cves": ["CVE-2021-44228", "CVE-2021-45046"], "category": "product", "difficulty": "medium"}
+{"id": "q22", "question": "What vulnerabilities affect the Windows SMB protocol?", "expected_cves": ["CVE-2017-0144", "CVE-2020-0796"], "category": "product", "difficulty": "medium"}
+{"id": "q23", "question": "What privilege escalation vulnerabilities affect the Linux kernel?", "expected_cves": ["CVE-2016-5195", "CVE-2022-0847"], "category": "product", "difficulty": "medium"}
+{"id": "q24", "question": "What remote code execution vulnerabilities affect Apache Struts?", "expected_cves": ["CVE-2017-5638", "CVE-2018-11776"], "category": "product", "difficulty": "medium"}
+{"id": "q25", "question": "What pre-authentication vulnerabilities affect VMware vCenter Server?", "expected_cves": ["CVE-2021-21972", "CVE-2021-22005"], "category": "product", "difficulty": "medium"}
+{"id": "q26", "question": "What critical vulnerabilities affect F5 BIG-IP?", "expected_cves": ["CVE-2020-5902", "CVE-2022-1388"], "category": "product", "difficulty": "medium"}
+{"id": "q27", "question": "What pre-authentication vulnerabilities affect Citrix ADC and Gateway?", "expected_cves": ["CVE-2019-19781"], "category": "product", "difficulty": "medium"}
+{"id": "q28", "question": "What vulnerabilities make up the ProxyLogon attack chain in Microsoft Exchange?", "expected_cves": ["CVE-2021-26855", "CVE-2021-27065"], "category": "product", "difficulty": "medium"}
+{"id": "q29", "question": "Which CVE is the Follina Microsoft Office and MSDT vulnerability?", "expected_cves": ["CVE-2022-30190"], "category": "named_vuln", "difficulty": "medium"}
+{"id": "q30", "question": "What pre-authentication vulnerabilities affect Pulse Connect Secure VPN?", "expected_cves": ["CVE-2019-11510"], "category": "product", "difficulty": "medium"}
+{"id": "q31", "question": "What remote code execution vulnerabilities affect Drupal core?", "expected_cves": ["CVE-2018-7600"], "category": "product", "difficulty": "medium"}
+{"id": "q32", "question": "Which CVE is the SIGRed Windows DNS Server vulnerability?", "expected_cves": ["CVE-2020-1350"], "category": "named_vuln", "difficulty": "medium"}
+{"id": "q33", "question": "What critical vulnerabilities have been disclosed in OpenSSL?", "expected_cves": [], "category": "product", "difficulty": "medium"}
+{"id": "q34", "question": "What deserialization vulnerabilities affect Java applications?", "expected_cves": [], "category": "vuln_type", "difficulty": "medium"}
+{"id": "q35", "question": "What path traversal vulnerabilities affect web servers?", "expected_cves": [], "category": "vuln_type", "difficulty": "medium"}
+{"id": "q36", "question": "What SQL injection vulnerabilities are known in web frameworks?", "expected_cves": [], "category": "vuln_type", "difficulty": "medium"}
+{"id": "q37", "question": "What critical remote code execution vulnerabilities were disclosed in 2021?", "expected_cves": [], "category": "temporal", "difficulty": "medium"}
+{"id": "q38", "question": "What vulnerabilities carry a CVSS base score of 10.0?", "expected_cves": [], "category": "cvss", "difficulty": "medium"}
+{"id": "q39", "question": "Compare Zerologon and PrintNightmare as Windows privilege-escalation vulnerabilities.", "expected_cves": ["CVE-2020-1472", "CVE-2021-34527"], "category": "multi_hop", "difficulty": "hard"}
+{"id": "q40", "question": "What are the differences between CVE-2017-0143 and CVE-2017-0144?", "expected_cves": ["CVE-2017-0143", "CVE-2017-0144"], "category": "multi_hop", "difficulty": "hard"}
+{"id": "q41", "question": "Compare Dirty COW and Dirty Pipe as Linux kernel privilege-escalation flaws.", "expected_cves": ["CVE-2016-5195", "CVE-2022-0847"], "category": "multi_hop", "difficulty": "hard"}
+{"id": "q42", "question": "Compare the two major Apache Struts remote code execution vulnerabilities and how they are exploited.", "expected_cves": ["CVE-2017-5638", "CVE-2018-11776"], "category": "multi_hop", "difficulty": "hard"}
+{"id": "q43", "question": "Compare the Citrix ADC and Pulse Connect Secure pre-authentication vulnerabilities exploited against VPN and gateway appliances.", "expected_cves": ["CVE-2019-19781", "CVE-2019-11510"], "category": "multi_hop", "difficulty": "hard"}
+{"id": "q44", "question": "Compare POODLE and Heartbleed as SSL/TLS vulnerabilities.", "expected_cves": ["CVE-2014-3566", "CVE-2014-0160"], "category": "multi_hop", "difficulty": "hard"}
+{"id": "q45", "question": "Which container runtime vulnerability allows escaping a Docker container by overwriting the runc binary?", "expected_cves": ["CVE-2019-5736"], "category": "multi_hop", "difficulty": "hard"}
+{"id": "q46", "question": "Compare BlueKeep and SMBGhost as wormable Windows network vulnerabilities.", "expected_cves": ["CVE-2019-0708", "CVE-2020-0796"], "category": "multi_hop", "difficulty": "hard"}
+{"id": "q47", "question": "What critical vulnerabilities with a CVSS score above 9 were exploited as zero-days in 2023?", "expected_cves": [], "category": "multi_hop", "difficulty": "hard"}
+{"id": "q48", "question": "What VPN and network-appliance vulnerabilities have been widely exploited by ransomware operators?", "expected_cves": [], "category": "multi_hop", "difficulty": "hard"}
+{"id": "q49", "question": "What deserialization vulnerabilities have led to remote code execution across the Java ecosystem?", "expected_cves": [], "category": "multi_hop", "difficulty": "hard"}
+{"id": "q50", "question": "What supply-chain compromises similar to Log4Shell have been disclosed since 2021?", "expected_cves": [], "category": "multi_hop", "difficulty": "hard"}

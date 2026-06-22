@@ -42,7 +42,7 @@ async def main() -> None:
         q_str = f"[{q['id']}] ({q['difficulty']}) {q['question']}"
         q_line = f"{'=' * len(q_str)}"
         print(f"\n{q_line}\n{q_str}\n{q_line}")
-        answer = await run_one(provider, q["question"])
+        answer, retrieved_cves = await run_one(provider, q["question"])
 
         results.append(
             {
@@ -50,6 +50,7 @@ async def main() -> None:
                 "question": q["question"],
                 "answer": answer,
                 "expected_cves": q["expected_cves"],
+                "retrieved_cves": retrieved_cves,
                 "category": q["category"],
                 "difficulty": q["difficulty"],
                 "timestamp": datetime.now(UTC).isoformat(),
@@ -68,26 +69,36 @@ def score() -> None:
         if line.strip()
     ]
 
-    by_difficulty: dict[str, list[bool]] = {"easy": [], "medium": [], "hard": []}
+    by_difficulty: dict[str, list[float]] = {"easy": [], "medium": [], "hard": []}
 
     for r in results:
         expected = r["expected_cves"]
 
         if not expected:
+            print(f"  [SKIP] {str(r['id']).capitalize()} No expected CVEs")
             continue
 
-        retrieved = [c.upper() for c in r.get("retrieved_cves", [])]
-        hit = all(cve.upper() in retrieved for cve in expected)
-        by_difficulty[r["difficulty"]].append(hit)
-        status = "HIT" if hit else "MISS"
-        print(f"  [{status}] {r['id']} — expected: {expected}")
+        retrieved = {c.upper() for c in r.get("retrieved_cves", [])}
+        found = [cve for cve in expected if cve.upper() in retrieved]
+        recall = len(found) / len(expected)
+        by_difficulty[r["difficulty"]].append(recall)
+
+        print(
+            f"  [{recall:.2f}] {str(r['id']).capitalize()} "
+            f"Found {len(found)} / {len(expected)} CVEs: {expected}"
+        )
 
     print()
 
-    for level, hits in by_difficulty.items():
-        if hits:
-            rate = sum(hits) / len(hits) * 100
-            print(f"  {level:6s}: {sum(hits)}/{len(hits)} = {rate:.0f}%")
+    for level, recalls in by_difficulty.items():
+        if recalls:
+            mean_recall = sum(recalls) / len(recalls)
+            print(
+                f"  [{str(level).capitalize()}] Mean recall of {mean_recall:.2f} "
+                f"for {len(recalls)} questions"
+            )
+
+    print()
 
 
 if __name__ == "__main__":

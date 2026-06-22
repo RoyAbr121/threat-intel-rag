@@ -74,9 +74,9 @@ External Sources (NVD · MITRE ATT&CK · Advisories · Sigma Rules · Threat Rep
 | Phase | Description | Status |
 |---|---|---|
 | **0** — Foundations | Repo scaffold, Docker stack, CI, pre-commit | ✅ Complete |
-| **1** — Ingestion & Indexing | NVD pipeline → Qdrant index of ≥10k CVEs | 🔄 In Progress |
-| **2** — Naive RAG Baseline | `POST /v1/query`, SSE streaming, eval baseline | ⬜ Planned |
-| **3** — Retrieval Quality | Hybrid BM25+dense, cross-encoder rerank, query rewriting | ⬜ Planned |
+| **1** — Ingestion & Indexing | NVD pipeline → Qdrant index of ≥10k CVEs | ✅ Complete |
+| **2** — Naive RAG Baseline | `POST /v1/query`, SSE streaming, eval baseline | ✅ Complete |
+| **3** — Retrieval Quality | Hybrid BM25+dense, cross-encoder rerank, query rewriting | 🔄 Next |
 | **4** — Agentic Layer | LangGraph loop, tool registry, budget caps | ⬜ Planned |
 | **5** — Observability & Eval | Langfuse traces, CI eval regression gate | ⬜ Planned |
 | **6** — Production Hardening | Multi-tenancy, OAuth2, rate limiting, RFC 7807 | ⬜ Planned |
