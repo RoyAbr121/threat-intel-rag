@@ -5,7 +5,6 @@ import struct
 from datetime import UTC, datetime
 
 import httpx
-from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -13,7 +12,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from threat_intel_rag.config import settings
 from threat_intel_rag.db.models import IngestionRecord, IngestionStatus
 from threat_intel_rag.ingestion.nvd_client import CveDetail, NvdClient
-from threat_intel_rag.ingestion.qdrant_setup import COLLECTION_NAME
+from threat_intel_rag.ingestion.qdrant_setup import COLLECTION_NAME, get_client
 
 
 def normalize_cve(cve: CveDetail) -> str | None:
@@ -59,7 +58,7 @@ async def ingest_cves(
 ) -> None:
     engine = create_async_engine(settings.postgres_dsn)
     AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
-    qdrant = QdrantClient(host=settings.qdrant_host, port=settings.qdrant_port)
+    qdrant = get_client()
 
     processed = 0
 

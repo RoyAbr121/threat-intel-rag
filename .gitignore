@@ -39,6 +39,10 @@ Thumbs.db
 # Docker volumes (if bind-mounted locally)
 volumes/
 
+# Ingestion / corpus build artifacts (regenerable, large)
+corpus_nvd.jsonl
+*.log
+
 # Distribution / packaging
 *.tar.gz
 *.whl

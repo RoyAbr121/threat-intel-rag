@@ -5,12 +5,11 @@ import asyncio
 from datetime import datetime
 
 import httpx
-from qdrant_client import QdrantClient
 from qdrant_client.models import ScoredPoint
 
 from threat_intel_rag.config import settings
 from threat_intel_rag.ingestion.pipeline import ingest_cves
-from threat_intel_rag.ingestion.qdrant_setup import COLLECTION_NAME
+from threat_intel_rag.ingestion.qdrant_setup import COLLECTION_NAME, get_client
 
 
 async def embed_query(text: str) -> list[float]:
@@ -27,7 +26,7 @@ async def embed_query(text: str) -> list[float]:
 
 def search(query: str, top_k: int = 5) -> list[ScoredPoint]:
     vector = asyncio.run(embed_query(query))
-    client = QdrantClient(host=settings.qdrant_host, port=settings.qdrant_port)
+    client = get_client()
 
     return client.query_points(
         collection_name=COLLECTION_NAME,

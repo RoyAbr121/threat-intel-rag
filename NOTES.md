@@ -1,3 +1,27 @@
+## Phase 3 — Retrieval Quality
+
+### Step 3.1 — Hybrid retrieval (BM25 + dense, RRF) — COMPLETE
+
+**What we built.** A second Qdrant collection `cve_hybrid` with named vectors: `dense` (768-dim cosine, the *same* nomic-embed-text embeddings) plus a `bm25` sparse vector with server-side `Modifier.IDF`. Sparse vectors come from FastEmbed `Qdrant/bm25`, which emits raw term frequencies and leaves IDF to Qdrant — so IDF recomputes against whatever is in the collection and subset numbers transfer to the full index. Retrieval fuses both via Reciprocal Rank Fusion (`hybrid_retrieve()` in `query/rag.py`).
+
+**Re-indexed 185k records without re-embedding.** The expensive part of a rebuild is embedding, not fetching. Because Step 3.1 keeps the same embed model, we scrolled the existing dense vectors back out of `cve_vectors`, computed the cheap BM25 sparse vector locally, and upserted both named vectors into `cve_hybrid` (`ingestion/hybrid_index.py`). Zero NVD calls, zero Ollama inference. A separate `dump_corpus()` writes the normalized payloads to a local JSONL artifact for offline/reproducible experimentation (only saves the fetch half — a model change would still require re-embedding).
+
+**Result — the inverted tiers broke** (see eval table): easy **0.05 → 0.55** (+0.50), hard 0.38 → 0.44, medium 0.04 → 0.04 (flat). BM25 exact-token match fixes ID lookups exactly as the Phase 2 hypothesis predicted.
+
+**Why medium stayed flat.** Medium is multi-CVE *comparison* questions phrased with codenames ("Compare Dirty COW and Dirty Pipe"), not IDs. No literal ID token → BM25 contributes nothing → hybrid collapses to plain dense, which is the 0.04 baseline. Hybrid only helps when the query carries a token the embedding can't represent. Medium is now the floor.
+
+**Pool diagnostic (`evals/diagnose_pool.py`).** For each pinned expected CVE, retrieve top-50 and bucket its rank: top-5 / in-pool (5–49) / absent (>50). Across the 54 expected-CVE pairs: **19 already top-5, 16 in-pool below rank 5 (reranking → 3.2 can recover), 19 absent from top-50 (genuine recall miss → 3.3 query rewriting).** The remaining gap splits ~50/50 between ranking and recall — neither step alone closes it.
+
+**Absence is a query problem, not a corpus problem.** `CVE-2017-0144` is absent for q14 but in-pool rank 8 for q40 — same CVE, same index, different phrasing. `CVE-2021-44228` is in-pool for q01 (has the ID token) but absent for q11 (codename "Log4Shell" only). The absent set is dominated by codename/descriptive-only queries — direct evidence that the fix is query rewriting (codename expansion, decomposition), not re-indexing.
+
+**Famous-CVE IDF dilution.** The surviving easy failures are all marquee names (Log4Shell, Heartbleed, Shellshock, EternalBlue, BlueKeep). Their IDs are quoted in hundreds of *other* CVE descriptions ("similar to CVE-2021-44228…"), collapsing BM25 IDF and burying the canonical record. Hidden on the 5k iteration subset (those competitors weren't present), it only surfaced on the full 185k index — validate retrieval on the full corpus, never a convenience subset.
+
+**Methodological caveat.** `hybrid_retrieve` ties prefetch depth to `top_k` (`limit=top_k*4`), so the diagnostic at k=50 searched a 200-deep pool vs the eval's 20-deep pool. The in-pool/absent split is robust (absent = missing from 200 deep), but "top-5" diagnostic verdicts are optimistic vs the k=5 eval (e.g. q21's `CVE-2021-44228` shows top-5 in the diagnostic but scored 0 in the eval). Step 3.2 decouples prefetch from k: retrieve deep (≈50) → rerank → top-5.
+
+**Refactors landed alongside.** `qdrant_setup.get_client()` centralizes client construction with `check_compatibility=False`, resolving the Qdrant client/server version-mismatch `UserWarning` (was an open Phase 2 known-issue). `cve_id` payload index added to `cve_hybrid` (was missing on `cve_vectors`).
+
+**Next:** 3.2 cross-encoder reranking — recover the 16 in-pool pairs first (scoped, measurable in isolation), then 3.3 query rewriting for the 19 codename-absent ones.
+
 ## Phase 2 — Naive RAG Baseline
 
 ### Step 2.5 — Baseline evaluation
@@ -11,6 +35,7 @@
 | Version | Easy recall | Medium recall | Hard recall | Faithfulness | p95 latency | Cost/query |
 |---|---|---|---|---|---|---|
 | **baseline** — naive dense, top-5 | 0.05 | 0.04 | 0.38 | — | — | $0 (local Ollama) |
+| **hybrid** — BM25+dense RRF, top-5 | 0.55 | 0.04 | 0.44 | — | — | $0 (local Ollama) |
 
 > Fill the baseline row from `uv run python evals/run_baseline.py` then `… score`. Faithfulness / p95 / cost columns land in Phases 3 and 5; later rows: hybrid → rerank → agentic → cached.
 

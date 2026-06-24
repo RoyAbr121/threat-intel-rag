@@ -676,7 +676,7 @@ footer .divider {
     <span>Technical Brief · Project Specification</span>
   </div>
   <h1 class="title">An Agentic <em>RAG</em> System<br>for Threat Intelligence.</h1>
-  <p class="subtitle">A production-grade technical specification — the single source of truth for system design, implementation decisions, and phase sequencing.</p>
+  <p class="subtitle">A production-grade, learning-focused build plan — for use as the single source of truth when resuming work from any phase, with any AI development assistant.</p>
 
   <div class="meta-grid">
     <div class="meta-item">
@@ -684,8 +684,8 @@ footer .divider {
       <div class="value">Cybersecurity</div>
     </div>
     <div class="meta-item">
-      <div class="label">Architecture</div>
-      <div class="value">Agentic RAG</div>
+      <div class="label">Target Role</div>
+      <div class="value">AI Backend Engineer</div>
     </div>
     <div class="meta-item">
       <div class="label">Build Window</div>
@@ -693,7 +693,7 @@ footer .divider {
     </div>
     <div class="meta-item">
       <div class="label">Status</div>
-      <div class="value">Phase 1 — In Progress</div>
+      <div class="value">Phase 3 — Retrieval Quality (next)</div>
     </div>
   </div>
 </header>
@@ -709,7 +709,12 @@ footer .divider {
 
   <p>The system ingests heterogeneous security data (CVE/NVD records, MITRE ATT&amp;CK techniques, vendor advisories, public threat-actor reports, detection rules), indexes it into a hybrid retrieval layer, and exposes a stateful agentic query engine via an authenticated HTTP API. The agent reasons about the question, decides which sources to query, performs iterative retrieval with self-grading, and produces cited, auditable answers within enforced time and cost budgets.</p>
 
-  <p>Every architectural decision in this brief is made to be defensible and explicitly documented — trade-offs acknowledged, alternatives considered, and rationale recorded.</p>
+  <p>The deliverable is not the demo — the deliverable is the <strong>portfolio artifact</strong>: a GitHub repository whose README, eval tables, load-test charts, architecture diagrams, and incident postmortems read as the work of a senior engineer who ships. Every architectural decision in this brief is made with the technical interview in mind.</p>
+
+  <div class="callout">
+    <div class="callout-label">North Star</div>
+    <p>If a senior engineer at Wiz, Check Point, Palo Alto, or any serious AI-platform team opens this repo, every choice should be defensible without hedging — and every trade-off should be explicitly acknowledged in the documentation.</p>
+  </div>
 </section>
 
 <!-- ============== 02 SUBJECT MATTER ============== -->
@@ -790,12 +795,12 @@ footer .divider {
     <div class="stack-card">
       <div class="stack-name">Cursor AI</div>
       <div class="stack-role">Primary Editor</div>
-      <div class="stack-rationale">Used for navigation, refactoring, and rapid context queries. Code is always read and understood before being accepted — no blind generation.</div>
+      <div class="stack-rationale">Used for navigation, refactoring, and rapid context queries — but not for blind code generation. The pedagogical contract forbids accepting code without typing or reasoning through it first.</div>
     </div>
     <div class="stack-card">
       <div class="stack-name">Claude Code</div>
       <div class="stack-role">Pair-Programming Assistant</div>
-      <div class="stack-rationale">Used to explain concepts, draft scaffolding, debug errors, and review code. This brief is the canonical context document for the project.</div>
+      <div class="stack-rationale">Used to explain concepts, draft scaffolding, debug errors, and review code. This brief is the canonical context document — load it into any session to resume work.</div>
     </div>
   </div>
 </section>
@@ -811,7 +816,7 @@ footer .divider {
 
   <p>Development begins with <strong>Ollama</strong> running locally as the LLM provider. The starting model is <code>llama3.1:8b-instruct</code> for generation and <code>nomic-embed-text</code> for embeddings — both run on CPU or a modest GPU, both produce sane output for development iteration, and both cost zero tokens. We expect quality to be visibly worse than a frontier API model; that is acceptable and arguably useful, because hard prompt-design and retrieval problems show up earlier when the model is weaker.</p>
 
-  <p>The architectural commitment is to a <code>LLMProvider</code> abstraction from the very first commit: a Protocol class with <code>generate()</code>, <code>stream()</code>, and <code>embed()</code> methods, and concrete implementations for Ollama and (later) Anthropic, OpenAI, and any other provider. The agent loop, retrieval layer, and API surface depend only on the Protocol — never on a concrete provider.</p>
+  <p>The architectural commitment is to a <code>LLMProvider</code> abstraction from the very first commit: a Protocol class with <code>generate()</code>, <code>stream()</code>, and <code>embed()</code> methods, and concrete implementations for Ollama and (later) Anthropic, OpenAI, and any other provider. The agent loop, retrieval layer, and API surface depend only on the Protocol — never on a concrete provider. This is not theoretical: it is a real interview talking point and a real production requirement.</p>
 
   <div class="callout callout-success">
     <div class="callout-label">Cost Discipline</div>
@@ -826,7 +831,7 @@ footer .divider {
     <h2>Technology stack &amp; justifications.</h2>
   </div>
 
-  <p>Each choice below is justified on technical merit. Where there is a genuine trade-off, the alternative and the reason for rejection are stated. Every component must earn its place.</p>
+  <p>Each choice below is defensible at senior level. Where there is genuine trade-off, the alternative and the reason for rejection are stated. Resume-driven design is the failure mode to avoid; every component must earn its place.</p>
 
   <div class="stack-grid">
     <div class="stack-card">
@@ -861,7 +866,7 @@ footer .divider {
       <div class="stack-name">Qdrant</div>
       <div class="stack-role">Vector Database</div>
       <div class="stack-rationale">Pre-filtered HNSW search via payload indexes — decisive for threat intel's heavy metadata filtering (CVSS, dates, vendor, severity). Native sparse + dense hybrid via named vectors. First-class quantization and multi-tenancy patterns.</div>
-      <div class="tradeoff">Alt: pgvector — simpler ops, one Postgres; acceptable at smaller scale, especially with pgvectorscale. Weaviate — heavier, more opinionated. Chose Qdrant for filter performance and sparse + dense hybrid support.</div>
+      <div class="tradeoff">Alt: pgvector — simpler ops, one Postgres; acceptable at smaller scale, especially with pgvectorscale. Weaviate — heavier, more opinionated. Chose Qdrant for filter performance and interview narrative.</div>
     </div>
 
     <div class="stack-card">
@@ -1132,7 +1137,7 @@ footer .divider {
     <h2>Development phases.</h2>
   </div>
 
-  <p>The build is sequenced so that every later phase rests on a verified earlier one. We do not move forward until the current phase's verification criteria pass. Skipping the "boring" early work is the most common way projects like this collapse.</p>
+  <p>The build is sequenced so that every later phase rests on a verified earlier one. We do not move forward until the current phase's verification criteria pass. Skipping the "boring" early work is the most common way portfolio projects collapse.</p>
 
   <div class="phases">
 
@@ -1227,7 +1232,7 @@ footer .divider {
       </div>
       <div class="phase-content">
         <h3>Testing &amp; Optimization</h3>
-        <p>Pytest with async fixtures. Integration tests via testcontainers. Load tests with k6 producing the latency chart in the README. Profiling and bottleneck analysis. Semantic caching layer. Embedding-model upgrade path exercised end-to-end. The eval-results table and load-test chart are finalized as project deliverables.</p>
+        <p>Pytest with async fixtures. Integration tests via testcontainers. Load tests with k6 producing the latency chart in the README. Profiling and bottleneck analysis. Semantic caching layer. Embedding-model upgrade path exercised end-to-end. The eval-results table and load-test chart are finalized as portfolio artifacts.</p>
         <span class="phase-deliverable">DELIVERABLE · p95 latency chart · cost-per-query dashboard · ≥80% test coverage</span>
       </div>
     </div>
@@ -1238,9 +1243,9 @@ footer .divider {
         <div class="phase-num">08</div>
       </div>
       <div class="phase-content">
-        <h3>Documentation &amp; Polish</h3>
-        <p>Final README rewrite with problem statement, measurable outcomes, architecture diagram, and one-command demo. Recorded video walkthrough or live deployment. Incident postmortem entry describing one real failure encountered and fixed.</p>
-        <span class="phase-deliverable">DELIVERABLE · Documentation complete · one-command demo working end-to-end</span>
+        <h3>Documentation &amp; Narrative</h3>
+        <p>Final README rewrite with problem statement, measurable outcomes, architecture diagram, one-command demo. Recorded video walkthrough or live deployment. Incident postmortem entry describing one real failure encountered and fixed. Interview narrative — the 60-second pitch, the 5-minute deep dive, the 30-minute architecture review.</p>
+        <span class="phase-deliverable">DELIVERABLE · Repo ready to link from a CV · interview script rehearsed</span>
       </div>
     </div>
 
@@ -1251,16 +1256,39 @@ footer .divider {
 <section id="methodology">
   <div class="section-header">
     <span class="section-number">§ 08</span>
-    <h2>Development methodology.</h2>
+    <h2>Pedagogical contract.</h2>
   </div>
 
-  <p class="lead">Each phase is built incrementally. Every step is verified before moving forward. The commit history documents the build progression as a sequence of working states.</p>
+  <p class="lead">The point is the learning, not the artifact. Copy-paste produces a portfolio that collapses in the first ten minutes of a technical screen. The methodology below is what makes the knowledge stick.</p>
 
-  <p>The approach for each step is consistent: understand the rationale before writing code, implement against a clear specification, verify with the exact command and expected output, then commit. No step advances until its verification passes.</p>
+  <p>Every step the assistant proposes follows the same four-part structure, in this order:</p>
 
-  <div class="callout callout-success">
-    <div class="callout-label">Incremental delivery</div>
-    <p>Three phases done properly — with real verification criteria, clean commits, and documented trade-offs — produce more value than eight phases done superficially. The phase sequencing in §07 reflects this: each phase's deliverable is a concrete, runnable artifact, not just merged code.</p>
+  <div class="method-grid">
+    <div class="method-card">
+      <div class="method-num">i.</div>
+      <h4>Rationale</h4>
+      <p>What we are building in this step, why this step is sequenced here, and what would break if we did it later. No code yet.</p>
+    </div>
+    <div class="method-card">
+      <div class="method-num">ii.</div>
+      <h4>Concepts</h4>
+      <p>The senior-level "why this works this way" — the async pattern, the indexing algorithm, the consistency model. Enough that interview questions on this topic can be answered without bluffing.</p>
+    </div>
+    <div class="method-card">
+      <div class="method-num">iii.</div>
+      <h4>Code (typed, not pasted)</h4>
+      <p>The code is shown with inline commentary, but you type it. Non-obvious choices are flagged. If a choice is unclear, ask before typing.</p>
+    </div>
+    <div class="method-card">
+      <div class="method-num">iv.</div>
+      <h4>Verification</h4>
+      <p>The exact command to run, the output you should see, and what it means if you see something else. We do not advance until this passes.</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout-label">When Errors Happen</div>
+    <p>Errors are the learning. Paste the error back — do not paste the fix. The assistant resists giving the fix directly; it walks through the diagnostic process and lets you find it. If the assistant catches itself just handing over a fix, push back.</p>
   </div>
 </section>
 
@@ -1274,19 +1302,19 @@ footer .divider {
   <ol class="rules-list">
     <li>
       <span class="rule-title">Commit after every working step.</span>
-      <span class="rule-body">Each verified step is its own commit, with a clear message. By the end the git history reads as a complete development journal. Do not squash.</span>
+      <span class="rule-body">Each verified step is its own commit, with a clear message. By the end the git history reads as a development journal — itself a portfolio artifact. Do not squash.</span>
     </li>
     <li>
       <span class="rule-title">Maintain <code>NOTES.md</code> in the repo.</span>
-      <span class="rule-body">A running log of what was learned, what surprised, and what would be done differently. Invaluable for understanding decisions made months later. Raw material for future blog posts.</span>
+      <span class="rule-body">A running log of what was learned, what surprised, and what would be done differently. Invaluable for interview prep three months later. Raw material for future blog posts.</span>
     </li>
     <li>
       <span class="rule-title">Do not skip "boring" steps.</span>
-      <span class="rule-body">Pre-commit hooks, CI from day one, structured logging, type checking — these are standard engineering discipline, not optional extras. If a step feels skippable, surface it explicitly before deferring.</span>
+      <span class="rule-body">Pre-commit hooks, CI from day one, structured logging, type checking — these feel like overhead but they are what separate senior portfolios from enthusiastic-but-junior ones. If a step feels skippable, surface it explicitly before deferring.</span>
     </li>
     <li>
-      <span class="rule-title">Stop when a concept is unclear.</span>
-      <span class="rule-body">"Wait, why does HNSW need pre-filtering specifically?" is the right kind of question. Better to understand the concept properly before building on it than to paper over a gap that surfaces later.</span>
+      <span class="rule-title">Stop when explanation does not land.</span>
+      <span class="rule-body">"Wait, why does HNSW need pre-filtering specifically?" is the right kind of question. Better to nail the concept now than gloss over it and get caught on it in interview.</span>
     </li>
     <li>
       <span class="rule-title">Realistic pace.</span>
@@ -1306,17 +1334,23 @@ footer .divider {
     <h2>Resumption protocol.</h2>
   </div>
 
-  <p>This document is the single source of truth for the project. To re-orient after any interruption, check three things: the current phase status in <code>CLAUDE.md</code>, the most recent commit in <code>git log</code>, and any open notes in <code>NOTES.md</code>.</p>
+  <p>This document is the single source of truth. To resume work in a new session — whether with Claude Code, Cursor, or any other assistant — provide it this brief, along with the current phase and the current state.</p>
 
-  <h4>Orientation Checklist</h4>
-  <pre><code><span class="pre-key">current_phase</span>: <span class="pre-val">check CLAUDE.md phase status</span>
-<span class="pre-key">last_commit</span>:   <span class="pre-val">git log --oneline -5</span>
-<span class="pre-key">service_health</span>: <span class="pre-val">docker compose ps</span>
-<span class="pre-key">open_items</span>:    <span class="pre-val">check NOTES.md for unresolved questions</span></code></pre>
+  <h4>Required Context for Any Session</h4>
+  <pre><code><span class="pre-comment"># Paste at the start of any new session:</span>
+
+<span class="pre-key">project_brief</span>: <span class="pre-val">[this HTML document]</span>
+<span class="pre-key">current_phase</span>: <span class="pre-val">[e.g., "Phase 03 — Retrieval Quality"]</span>
+<span class="pre-key">current_step</span>: <span class="pre-val">[e.g., "Adding cross-encoder reranking"]</span>
+<span class="pre-key">last_commit</span>: <span class="pre-val">[git SHA + message]</span>
+<span class="pre-key">open_questions</span>: <span class="pre-val">[anything left unresolved]</span>
+<span class="pre-key">notes_md_tail</span>: <span class="pre-val">[last few entries from NOTES.md]</span></code></pre>
+
+  <p>The assistant should re-read the phase definitions, confirm the methodology (rationale → concepts → code → verification), and ask the user to verify the current state before proposing the next step. Under no circumstance should the assistant skip the methodology — even if the user asks for a "quick fix" or "just give me the code."</p>
 
   <div class="callout callout-success">
-    <div class="callout-label">State invariant</div>
-    <p>Every phase ends with a passing verification step and a clean commit. If a phase is in progress, the last clean commit marks where verified state ends — resume from there, not from unverified working-directory changes.</p>
+    <div class="callout-label">Continuity Invariant</div>
+    <p>If a session is interrupted mid-step, the next session resumes at the same step's <em>concepts</em> stage — re-grounding the rationale before continuing to code. This is not redundant; it is how the knowledge consolidates.</p>
   </div>
 </section>
 
@@ -1324,16 +1358,16 @@ footer .divider {
 <section id="artifacts">
   <div class="section-header">
     <span class="section-number">§ 11</span>
-    <h2>Project deliverables.</h2>
+    <h2>Portfolio artifacts.</h2>
   </div>
 
-  <p>By the end of the build, the repository contains the following concrete artifacts:</p>
+  <p>Production credibility comes from artifacts, not claims. By the end of the build, the repository contains:</p>
 
   <div class="stack-grid">
     <div class="stack-card">
       <div class="stack-name">Eval Iteration Table</div>
       <div class="stack-role">README · TABLE</div>
-      <div class="stack-rationale">Rows showing version-by-version improvements: <em>baseline → hybrid → rerank → agentic → cached</em> with faithfulness, context recall, p95 latency, and cost per query at each step. The clearest demonstration of systematic retrieval improvement.</div>
+      <div class="stack-rationale">Rows showing version-by-version improvements: <em>baseline → hybrid → rerank → agentic → cached</em> with faithfulness, context recall, p95 latency, and cost per query at each step. The single most interview-valuable artifact.</div>
     </div>
     <div class="stack-card">
       <div class="stack-name">Load Test Report</div>
@@ -1354,6 +1388,11 @@ footer .divider {
       <div class="stack-name">One-Command Demo</div>
       <div class="stack-role">make demo</div>
       <div class="stack-rationale">A single command brings up the full stack, ingests a sample CVE batch, and answers a canonical query end-to-end. Reviewers spend ten seconds on a README; a working demo earns minutes.</div>
+    </div>
+    <div class="stack-card">
+      <div class="stack-name">Interview Pitch Document</div>
+      <div class="stack-role">docs/interview-narrative.md</div>
+      <div class="stack-rationale">The 60-second pitch, the 5-minute deep dive, and the 30-minute architecture walkthrough — written in advance so they roll off the tongue under pressure.</div>
     </div>
   </div>
 </section>
@@ -1394,7 +1433,7 @@ footer .divider {
         <span class="reference-title">Qdrant — Filtering &amp; Payload Indexes</span>
       </a>
       <div class="reference-source">Qdrant Docs</div>
-      <div class="reference-note">The technical backbone of the vector-DB choice. Understanding pre-filtered HNSW vs. post-filtered search is essential to the vector-DB design rationale.</div>
+      <div class="reference-note">The technical backbone of the vector-DB choice. Understanding pre-filtered HNSW vs. post-filtered search is non-negotiable interview material.</div>
     </div>
     <div class="reference">
       <a href="https://langchain-ai.github.io/langgraph/">
@@ -1416,7 +1455,7 @@ footer .divider {
 <!-- ============== FOOTER ============== -->
 <footer>
   <div class="divider"></div>
-  <div>END OF BRIEF · v1.0</div>
+  <div>END OF BRIEF · v1.0 · prepared for resumption-safe development</div>
 </footer>
 
 </div>

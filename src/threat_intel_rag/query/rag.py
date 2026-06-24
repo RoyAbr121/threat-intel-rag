@@ -1,12 +1,22 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from functools import lru_cache
 
-from qdrant_client import QdrantClient
-from qdrant_client.models import ScoredPoint
+from fastembed import SparseTextEmbedding
+from qdrant_client.models import (
+    Fusion,
+    FusionQuery,
+    Prefetch,
+    ScoredPoint,
+    SparseVector,
+)
 
-from threat_intel_rag.config import settings
-from threat_intel_rag.ingestion.qdrant_setup import COLLECTION_NAME
+from threat_intel_rag.ingestion.qdrant_setup import (
+    COLLECTION_NAME,
+    HYBRID_COLLECTION_NAME,
+    get_client,
+)
 from threat_intel_rag.llm.protocol import LLMProvider
 
 _PROMPT_TEMPLATE = """\
@@ -28,7 +38,7 @@ async def retrieve(
     top_k: int = 5,
 ) -> list[ScoredPoint]:
     vector = await provider.embed(question)
-    qdrant = QdrantClient(host=settings.qdrant_host, port=settings.qdrant_port)
+    qdrant = get_client()
 
     return qdrant.query_points(
         collection_name=COLLECTION_NAME,
@@ -66,3 +76,35 @@ async def rag_stream(
 
     async for token in stream_answer(question, hits, provider):
         yield token
+
+
+@lru_cache(maxsize=1)
+def _bm25() -> SparseTextEmbedding:
+    return SparseTextEmbedding(model_name="Qdrant/bm25")
+
+
+async def hybrid_retrieve(
+    question: str,
+    provider: LLMProvider,
+    top_k: int = 5,
+) -> list[ScoredPoint]:
+    dense = await provider.embed(question)
+    sparse = next(iter(_bm25().query_embed(question)))
+    qdrant = get_client()
+
+    return qdrant.query_points(
+        collection_name=HYBRID_COLLECTION_NAME,
+        prefetch=[
+            Prefetch(query=dense, using="dense", limit=top_k * 4),
+            Prefetch(
+                query=SparseVector(
+                    indices=sparse.indices.tolist(),
+                    values=sparse.values.tolist(),
+                ),
+                using="bm25",
+                limit=top_k * 4,
+            ),
+        ],
+        query=FusionQuery(fusion=Fusion.RRF),
+        limit=top_k,
+    ).points

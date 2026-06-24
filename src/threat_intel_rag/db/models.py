@@ -6,11 +6,11 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.types import DateTime
 
 
-class Base(DeclarativeBase):  # type: ignore[misc]
+class Base(DeclarativeBase):
     pass
 
 
-class IngestionStatus(str, enum.Enum):
+class IngestionStatus(enum.StrEnum):
     pending = "pending"
     indexed = "indexed"
     failed = "failed"

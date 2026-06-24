@@ -3,19 +3,29 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
+from qdrant_client.models import ScoredPoint
+
 from threat_intel_rag.llm.ollama import OllamaProvider
-from threat_intel_rag.query.rag import retrieve, stream_answer
+from threat_intel_rag.query.rag import hybrid_retrieve, retrieve, stream_answer
 
 EVALS_DIR = Path(__file__).parent
 QUESTIONS_PATH = EVALS_DIR / "golden_questions.jsonl"
 RESULTS_PATH = EVALS_DIR / "baseline_results.jsonl"
+HYBRID_RESULTS_PATH = EVALS_DIR / "hybrid_results.jsonl"
+
+Retriever = Callable[[str, OllamaProvider, int], Awaitable[list[ScoredPoint]]]
 
 
-async def run_one(provider: OllamaProvider, question: str) -> tuple[str, list[str]]:
-    hits = await retrieve(question, provider, top_k=5)
+async def run_one(
+    provider: OllamaProvider,
+    question: str,
+    retriever: Retriever,
+) -> tuple[str, list[str]]:
+    hits = await retriever(question, provider, 5)
     retrieved_cves = [(hit.payload or {}).get("cve_id", "") for hit in hits]
 
     tokens: list[str] = []
@@ -28,7 +38,7 @@ async def run_one(provider: OllamaProvider, question: str) -> tuple[str, list[st
     return "".join(tokens), retrieved_cves
 
 
-async def main() -> None:
+async def main(retriever: Retriever, results_path: Path) -> None:
     provider = OllamaProvider()
     questions = [
         json.loads(line)
@@ -42,7 +52,7 @@ async def main() -> None:
         q_str = f"[{q['id']}] ({q['difficulty']}) {q['question']}"
         q_line = f"{'=' * len(q_str)}"
         print(f"\n{q_line}\n{q_str}\n{q_line}")
-        answer, retrieved_cves = await run_one(provider, q["question"])
+        answer, retrieved_cves = await run_one(provider, q["question"], retriever)
 
         results.append(
             {
@@ -57,15 +67,14 @@ async def main() -> None:
             }
         )
 
-    RESULTS_PATH.write_text("\n".join(json.dumps(r) for r in results), encoding="utf-8")
+    results_path.write_text("\n".join(json.dumps(r) for r in results), encoding="utf-8")
+    print(f"\nResults saved to {results_path}")
 
-    print(f"\nResults saved to {RESULTS_PATH}")
 
-
-def score() -> None:
+def score(results_path: Path) -> None:
     results = [
         json.loads(line)
-        for line in RESULTS_PATH.read_text(encoding="utf-8").splitlines()
+        for line in results_path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
 
@@ -102,7 +111,12 @@ def score() -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "score":
-        score()
+    args = sys.argv[1:]
+    hybrid = "hybrid" in args
+
+    if "score" in args:
+        score(HYBRID_RESULTS_PATH if hybrid else RESULTS_PATH)
+    elif hybrid:
+        asyncio.run(main(hybrid_retrieve, HYBRID_RESULTS_PATH))
     else:
-        asyncio.run(main())
+        asyncio.run(main(retrieve, RESULTS_PATH))
