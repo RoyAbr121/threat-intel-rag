@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncGenerator
 from functools import lru_cache
 
 from fastembed import SparseTextEmbedding
+from fastembed.rerank.cross_encoder import TextCrossEncoder
 from qdrant_client.models import (
     Fusion,
     FusionQuery,
@@ -108,3 +110,30 @@ async def hybrid_retrieve(
         query=FusionQuery(fusion=Fusion.RRF),
         limit=top_k,
     ).points
+
+
+@lru_cache(maxsize=1)
+def _reranker() -> TextCrossEncoder:
+    return TextCrossEncoder(model_name="Xenova/ms-marco-MiniLM-L-6-v2")
+
+
+async def rerank_retrieve(
+    question: str,
+    provider: LLMProvider,
+    top_k: int = 5,
+    candidates: int = 50,
+) -> list[ScoredPoint]:
+    pool = await hybrid_retrieve(question, provider, top_k=candidates)
+
+    if not pool:
+        return []
+
+    docs = [(p.payload or {}).get("text", "") for p in pool]
+    scores = await asyncio.to_thread(lambda: list(_reranker().rerank(question, docs)))
+
+    for point, score in zip(pool, scores, strict=True):
+        point.score = score
+
+    pool.sort(key=lambda p: p.score, reverse=True)
+
+    return pool[:top_k]

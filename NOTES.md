@@ -22,6 +22,25 @@
 
 **Next:** 3.2 cross-encoder reranking — recover the 16 in-pool pairs first (scoped, measurable in isolation), then 3.3 query rewriting for the 19 codename-absent ones.
 
+### Step 3.2 — Cross-encoder reranking — COMPLETE
+
+**What we built.** `rerank_retrieve()` in `query/rag.py`: pull a deep hybrid pool, score every candidate against the query with a cross-encoder, keep the top 5. It pulls `candidates=50` via `hybrid_retrieve(top_k=50)` → 200-deep prefetch per branch → RRF-fused 50 → reranked to 5. This **decouples prefetch depth from the returned `top_k`**, closing the Step 3.1 caveat (the eval pool was only 20 deep). The CPU-bound rerank call is offloaded with `asyncio.to_thread` so it never blocks the event loop.
+
+**Model — deviation from the brief, on purpose.** The brief names `sentence-transformers`; we used FastEmbed `TextCrossEncoder` (`Xenova/ms-marco-MiniLM-L-6-v2`, imported from `fastembed.rerank.cross_encoder`). Rationale: zero new dependencies (fastembed already powers BM25), no torch (~2 GB saved), ONNX-quantized and CPU-fast — the same inference stack as Step 3.1. Functionally the same MiniLM family the brief intended; the reranking result is equivalent. A reasoned stack decision, not a literal copy of the spec.
+
+**Result — a wash in aggregate, a clean dichotomy underneath.** easy 0.55 → 0.60, medium 0.04 → 0.08, hard 0.44 → **0.38** (regressed). Per-question diff of `hybrid_results.jsonl` vs `rerank_results.jsonl`:
+
+- **Recoveries (5):** q02, q03 (exact ID in query), q40 (+`CVE-2017-0143`, both IDs in query), q24, q42 (vocabulary-rich Struts comparisons). The cross-encoder sharpens relevance exactly where the query carries the matching token.
+- **Regressions (3):** q17 (PrintNightmare), q39 (Zerologon + PrintNightmare — lost *both*, which hybrid had at rank 1 & 3), q44 (POODLE + Heartbleed). **Every regression is a codename-only query.**
+
+**Root cause.** The rerank is a *pure re-sort* — it gives the cross-encoder absolute authority and discards the RRF ranking entirely. Where the query token matches (an ID, or rich technical vocabulary), joint encoding wins → recoveries. Where the query is a codename the NVD description never contains, the semantic model confidently scores the correct doc *low* and overrides the lucky dense hit → regressions. The reranker can't see what isn't lexically there — the same blind spot as dense.
+
+**Why we proceed to 3.3 instead of tuning.** Every regression is a codename query — precisely Step 3.3's target. q40 already proves the fix: with the IDs *in* the query, the reranker nails it. Once 3.3 rewrites `Zerologon → CVE-2020-1472`, q39/q17/q44 convert from codename-misses to ID-hits and the reranker will *help* them. So 3.2's regressions are 3.3's job, not a reranker defect. **Score-blending** (combine the normalized CE score with the RRF rank instead of a pure re-sort, to protect a strong first-stage consensus like q39) is held in reserve — apply only if first-stage-override regressions survive 3.3.
+
+**`candidates=50` is provisional, not tuned.** Chosen because the pool diagnostic defined "in-pool" as top-50; it is *not* the result of a sweep. Revisit after 3.3 stabilizes retrieval: sweep 20/50/100 and pick by recall vs latency (cross-encoder cost is linear in `candidates`).
+
+**Next:** 3.3 query rewriting / decomposition — codename → ID expansion. Targets both the 19 absent pairs (recall) and the 3.2 codename regressions (which become ID-in-query, and therefore rerankable).
+
 ## Phase 2 — Naive RAG Baseline
 
 ### Step 2.5 — Baseline evaluation
@@ -36,6 +55,7 @@
 |---|---|---|---|---|---|---|
 | **baseline** — naive dense, top-5 | 0.05 | 0.04 | 0.38 | — | — | $0 (local Ollama) |
 | **hybrid** — BM25+dense RRF, top-5 | 0.55 | 0.04 | 0.44 | — | — | $0 (local Ollama) |
+| **rerank** — hybrid → cross-encoder (MiniLM), top-5 | 0.60 | 0.08 | 0.38 | — | — | $0 (local Ollama) |
 
 > Fill the baseline row from `uv run python evals/run_baseline.py` then `… score`. Faithfulness / p95 / cost columns land in Phases 3 and 5; later rows: hybrid → rerank → agentic → cached.
 

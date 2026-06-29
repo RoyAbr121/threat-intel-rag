@@ -10,12 +10,18 @@ from pathlib import Path
 from qdrant_client.models import ScoredPoint
 
 from threat_intel_rag.llm.ollama import OllamaProvider
-from threat_intel_rag.query.rag import hybrid_retrieve, retrieve, stream_answer
+from threat_intel_rag.query.rag import (
+    hybrid_retrieve,
+    rerank_retrieve,
+    retrieve,
+    stream_answer,
+)
 
 EVALS_DIR = Path(__file__).parent
 QUESTIONS_PATH = EVALS_DIR / "golden_questions.jsonl"
 RESULTS_PATH = EVALS_DIR / "baseline_results.jsonl"
 HYBRID_RESULTS_PATH = EVALS_DIR / "hybrid_results.jsonl"
+RERANK_RESULTS_PATH = EVALS_DIR / "rerank_results.jsonl"
 
 Retriever = Callable[[str, OllamaProvider, int], Awaitable[list[ScoredPoint]]]
 
@@ -112,11 +118,17 @@ def score(results_path: Path) -> None:
 
 if __name__ == "__main__":
     args = sys.argv[1:]
-    hybrid = "hybrid" in args
+    retriever: Retriever
+    results_path: Path
+
+    if "rerank" in args:
+        retriever, results_path = rerank_retrieve, RERANK_RESULTS_PATH
+    elif "hybrid" in args:
+        retriever, results_path = hybrid_retrieve, HYBRID_RESULTS_PATH
+    else:
+        retriever, results_path = retrieve, RESULTS_PATH
 
     if "score" in args:
-        score(HYBRID_RESULTS_PATH if hybrid else RESULTS_PATH)
-    elif hybrid:
-        asyncio.run(main(hybrid_retrieve, HYBRID_RESULTS_PATH))
+        score(results_path)
     else:
-        asyncio.run(main(retrieve, RESULTS_PATH))
+        asyncio.run(main(retriever, results_path))
