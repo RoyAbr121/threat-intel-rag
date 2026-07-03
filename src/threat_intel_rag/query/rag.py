@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from collections.abc import AsyncGenerator
 from functools import lru_cache
 
 from fastembed import SparseTextEmbedding
 from fastembed.rerank.cross_encoder import TextCrossEncoder
 from qdrant_client.models import (
+    FieldCondition,
+    Filter,
     Fusion,
     FusionQuery,
+    MatchAny,
     Prefetch,
     ScoredPoint,
     SparseVector,
@@ -32,6 +36,15 @@ Context:
 Question: {question}        
 
 Answer:"""
+
+_REWRITE_TEMPLATE = """\
+You rewrite cybersecurity questions into search queries for a CVE/NVD index.
+Expand any vulnerability codename (e.g. "Log4Shell", "Heartbleed") into the \
+affected product, the vulnerability type, and the CVE identifier if you know it. \
+Keep it terse - keywords, not prose. Output only the rewritten query, nothing else.
+
+Question: {question}
+Rewritten query:"""
 
 
 async def retrieve(
@@ -137,3 +150,68 @@ async def rerank_retrieve(
     pool.sort(key=lambda p: p.score, reverse=True)
 
     return pool[:top_k]
+
+
+async def rewrite_query(question: str, provider: LLMProvider) -> str:
+    prompt = _REWRITE_TEMPLATE.format(question=question)
+    rewritten = await provider.generate(prompt, temperature=0.0)
+
+    return rewritten.strip().strip('"').strip()
+
+
+async def rewrite_retrieve(
+    question: str,
+    provider: LLMProvider,
+    top_k: int = 5,
+) -> list[ScoredPoint]:
+    expansion = await rewrite_query(question, provider)
+    augmented = f"{question} {expansion}"
+
+    return await rerank_retrieve(augmented, provider, top_k=top_k)
+
+
+_CVE_RE = re.compile(r"CVE-\d{4}-\d{4,}", re.IGNORECASE)
+
+
+def _extract_cve_ids(text: str) -> list[str]:
+    seen: list[str] = []
+
+    for match in _CVE_RE.findall(text):
+        cve = match.upper()
+
+        if cve not in seen:
+            seen.append(cve)
+
+    return seen
+
+
+async def exact_id_retrieve(cve_ids: list[str], top_k: int = 5) -> list[ScoredPoint]:
+    qdrant = get_client()
+    records, _ = qdrant.scroll(
+        collection_name=HYBRID_COLLECTION_NAME,
+        scroll_filter=Filter(
+            must=[FieldCondition(key="cve_id", match=MatchAny(any=cve_ids))]
+        ),
+        limit=top_k,
+        with_payload=True,
+    )
+
+    return [
+        ScoredPoint(id=r.id, version=0, score=1.0, payload=r.payload) for r in records
+    ]
+
+
+async def route_retrieve(
+    question: str,
+    provider: LLMProvider,
+    top_k: int = 5,
+) -> list[ScoredPoint]:
+    cve_ids = _extract_cve_ids(question)
+
+    if cve_ids:
+        hits = await exact_id_retrieve(cve_ids, top_k=top_k)
+
+        if hits:
+            return hits
+
+    return await rewrite_retrieve(question, provider, top_k=top_k)

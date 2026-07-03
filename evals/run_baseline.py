@@ -14,6 +14,8 @@ from threat_intel_rag.query.rag import (
     hybrid_retrieve,
     rerank_retrieve,
     retrieve,
+    rewrite_retrieve,
+    route_retrieve,
     stream_answer,
 )
 
@@ -22,6 +24,8 @@ QUESTIONS_PATH = EVALS_DIR / "golden_questions.jsonl"
 RESULTS_PATH = EVALS_DIR / "baseline_results.jsonl"
 HYBRID_RESULTS_PATH = EVALS_DIR / "hybrid_results.jsonl"
 RERANK_RESULTS_PATH = EVALS_DIR / "rerank_results.jsonl"
+REWRITE_RESULTS_PATH = EVALS_DIR / "rewrite_results.jsonl"
+ROUTE_RESULTS_PATH = EVALS_DIR / "route_results.jsonl"
 
 Retriever = Callable[[str, OllamaProvider, int], Awaitable[list[ScoredPoint]]]
 
@@ -121,7 +125,11 @@ if __name__ == "__main__":
     retriever: Retriever
     results_path: Path
 
-    if "rerank" in args:
+    if "route" in args:
+        retriever, results_path = route_retrieve, ROUTE_RESULTS_PATH
+    elif "rewrite" in args:
+        retriever, results_path = rewrite_retrieve, REWRITE_RESULTS_PATH
+    elif "rerank" in args:
         retriever, results_path = rerank_retrieve, RERANK_RESULTS_PATH
     elif "hybrid" in args:
         retriever, results_path = hybrid_retrieve, HYBRID_RESULTS_PATH

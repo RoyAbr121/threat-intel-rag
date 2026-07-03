@@ -41,6 +41,38 @@
 
 **Next:** 3.3 query rewriting / decomposition — codename → ID expansion. Targets both the 19 absent pairs (recall) and the 3.2 codename regressions (which become ID-in-query, and therefore rerankable).
 
+### Step 3.3 — Query rewriting (LLM expansion, augment-not-replace) — COMPLETE
+
+**What we built.** `rewrite_query()` asks the LLM to expand a terse/codename question into corpus vocabulary + the CVE ID; `rewrite_retrieve()` then retrieves on `f"{question} {expansion}"` through the existing rerank cascade. Result **easy 0.55 / medium 0.25 / hard 0.38** — vs rerank (both deterministic) **medium +0.17, easy −0.05, hard flat**. Medium was the floor tier; we more than tripled it (0.08 → 0.25).
+
+**Two corrections turned a mirage into a real result.** The first-cut design *replaced* the query with the rewrite and ran at the model's default temperature. Both were wrong:
+
+- **Non-determinism broke eval integrity.** Every other retriever (dense/hybrid/rerank) is deterministic, so their deltas are trustworthy. The LLM rewrite is the *only* stochastic stage — re-running the same eval moved the numbers, and the diagnostic rewrite of one question (`CVE-2016-5195`) returned a *different, wrong* CVE on each call (once `CVE-2017-5753 / Spectre`, once `SMBv3 RCE`). Fix: a `temperature` param on `LLMProvider.generate`, pinned to `0.0` for the rewrite. A rewrite is a *transformation*, not a *generation* — same input must give same output. Two consecutive evals came back byte-identical. *(Correction, found during the routing step: temp 0 shrinks the variance but does not eliminate it — see the non-determinism finding in the next section. Those two identical runs were real but partly lucky.)*
+- **Replace threw away a good query.** The first-cut replace-mode run (default temperature) scored easy **0.50** — a regression from rerank's 0.60 that triggered the diagnosis. Three failure modes showed up in the rewrites: (1) **mangled ID** — `CVE-2020-1472` → `cve 2020-1472`, splitting the BM25 exact-match token; (2) **vocab dilution** — ID kept but added common terms pulled in competitors; (3) **hallucination** — `CVE-2020-1472` (Netlogon) expanded to "Windows remote desktop" (that's BlueKeep). All three argue for **augment, not replace**: appending the expansion preserves the original's correct tokens, so a mangled/hallucinated expansion can only *add* noise, never destroy the anchor. Switching to **augment + temp 0** brought easy back to **0.55** (the final figure). The clean, model-independent guarantee is for questions that *already contain the ID* (e.g. **q08**); codename recoveries like **q13/q15** have no original ID to preserve and instead depend on the temp-0 rewrite mapping the name correctly. Caveat: temperature→0 and replace→augment changed in the *same* step, so per-question replace-vs-augment deltas are confounded — only the structural ID-bearing claim is clean.
+
+**Residual failures are structured-lookup problems, not retrieval problems.** With the eval now deterministic, the surviving easy zeros split cleanly and neither bucket is fixable by more rewriting or tuning:
+
+- **(A) Famous-CVE IDF dilution** — q01, q04, q10. These three *literally contain* the CVE ID (`"What is CVE-2016-5195?"`) and augmentation *kept* it, yet the record stays buried: marquee IDs (`CVE-2021-44228`, `CVE-2016-5195`, `CVE-2022-22965`) are quoted across hundreds of other descriptions, so their IDF collapses and the token stops discriminating. A **ranking** failure.
+- **(B) Codename gap** — q11 (Log4Shell), q16 (Dirty COW), q17 (PrintNightmare), q18 (Zerologon), q19 (PwnKit), q20 (Spring4Shell). No literal ID in the query; at temperature 0 the LLM *deterministically* fails to map these codenames to IDs — its parametric recall doesn't cover them.
+
+**The insight — a CVE ID is a primary key and a codename is an alias key, not search terms.** We were forcing exact identifiers through fuzzy ranked retrieval. This is the data-justified case for **query routing** (the two reserved options, now earned): an exact-ID short-circuit (`CVE-\d{4}-\d+` → filter the `cve_id` payload index directly) fixes bucket A deterministically; a static codename→ID alias table fixes bucket B. Hard stays flat because q39/q46 are multi-entity — that is **3.3c decomposition**, still pending.
+
+**Next:** exact-ID short-circuit — fires only on questions containing a literal ID (q01–q10 + q40), so it recovers the three failing ID lookups (q01/q04/q10) → **easy 0.55 → ~0.70**; the codename bucket (q11/q16–q20) is *not* touched by the ID route and needs the alias table. Introduces query routing as the architecture; then the alias table, then 3.3c decomposition for the hard tier.
+
+### Step 3.4 — Exact-ID short-circuit (query routing) — COMPLETE
+
+**What we built.** `route_retrieve()` in `query/rag.py`: if the question contains a literal `CVE-\d{4}-\d{4,}` token (case-insensitive, deduped via `_extract_cve_ids()`), fetch those records directly with `exact_id_retrieve()` — a Qdrant `scroll` with a `MatchAny` filter on the `cve_id` payload index (built in 3.1) — and stamp `score=1.0`; otherwise fall through to the full rewrite→rerank cascade. If an extracted ID isn't in the index (coverage gap), the empty exact result also falls through rather than returning nothing. `scroll` not `query_points` because a key fetch has no similarity notion — it's a filter read, not a ranking.
+
+**Result — exactly as predicted: easy 0.55 → 0.70.** q01/q04/q10 (the famous-CVE IDF-dilution failures — ID literally in the query, record buried by quoting competitors) all flipped 0 → 1.0. All eleven ID-routed questions (q01–q10, q40) scored identically across three consecutive eval runs — the routed path has zero variance. Medium 0.25 unchanged (no medium question carries a literal ID). A CVE ID is a primary key; fetching by key beats ranking for it, deterministically and at near-zero cost (no embed, no LLM, no rerank on the routed path).
+
+**New finding — temperature 0 is not fully deterministic.** Disagreements showed up *only on rewrite fall-through questions*, in two distinct patterns: (1) **within-session flap** — q18 (Zerologon) scored 1.0 in one of three route runs, 0.0 in the other two; (2) **cross-session drift** — q41 (Dirty COW vs Dirty Pipe) scored 0.50 in the earlier rewrite eval but 0.00 in *all three* route runs, on the identical code path (q41 has no ID token, so routing never touches it). Stable within a session but different across sessions points at Ollama server state (model reload, batching context) on top of per-request noise. Concept: temp 0 makes decoding *greedy* — deterministic **given identical logits** — but the logits themselves wobble: GPU kernels batch concurrent requests, floating-point addition is non-associative, so summation order varies with server load and can flip a near-tie between top tokens; one flipped token early in the expansion cascades. Temp 0 *shrinks* variance; it does not eliminate it. The Step 3.3 "byte-identical" observation was real but partly lucky.
+
+**Honest scores — as measured across the three route runs: easy 0.70 (0.75 once, via q18), medium 0.25 (stable), hard 0.31 (stable).** Hard's −0.07 vs the rewrite row is q41's cross-session drift, not a routing regression. The eval now has a deterministic core (route path) and a low-variance-but-not-zero LLM stage (fall-through).
+
+**The architecture argument sharpened.** Every question moved off the LLM path onto a deterministic route removes *variance and failure at once*. q18's flapping is literally the alias table's case: `Zerologon → CVE-2020-1472` in a static dict never wobbles.
+
+**Next:** codename→ID alias table (bucket B: q11/q16–q20 → easy ~1.0, and de-flaps q18); then 3.3c decomposition for the hard tier (q39/q46 multi-entity).
+
 ## Phase 2 — Naive RAG Baseline
 
 ### Step 2.5 — Baseline evaluation
@@ -56,6 +88,10 @@
 | **baseline** — naive dense, top-5 | 0.05 | 0.04 | 0.38 | — | — | $0 (local Ollama) |
 | **hybrid** — BM25+dense RRF, top-5 | 0.55 | 0.04 | 0.44 | — | — | $0 (local Ollama) |
 | **rerank** — hybrid → cross-encoder (MiniLM), top-5 | 0.60 | 0.08 | 0.38 | — | — | $0 (local Ollama) |
+| **rewrite** — LLM augment (temp 0) → rerank, top-5 | 0.55 | 0.25 | 0.38 | — | — | $0 (local Ollama) |
+| **route** — exact-ID short-circuit, else rewrite | 0.70* | 0.25 | 0.31* | — | — | $0 (local Ollama) |
+
+\* Fall-through variance, not a routing effect (temp 0 is low-variance, not zero-variance — see Step 3.4): easy hit 0.75 in one of three runs (q18 flapped within-session); hard's q41 scored 0.50 in the earlier rewrite eval but 0.00 in all three route runs on the identical code path (cross-session drift).
 
 > Fill the baseline row from `uv run python evals/run_baseline.py` then `… score`. Faithfulness / p95 / cost columns land in Phases 3 and 5; later rows: hybrid → rerank → agentic → cached.
 

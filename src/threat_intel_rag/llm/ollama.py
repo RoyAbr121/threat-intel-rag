@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import AsyncGenerator
+from typing import Any
 
 import httpx
 
@@ -14,13 +15,16 @@ class OllamaProvider:
         self._model = settings.ollama_llm_model
         self._embed_model = settings.ollama_embed_model
 
-    async def generate(self, prompt: str) -> str:
+    async def generate(self, prompt: str, temperature: float | None = None) -> str:
+        payload: dict[str, Any] = {
+            "model": self._model,
+            "prompt": prompt,
+            "stream": False,
+        }
+        if temperature is not None:
+            payload["options"] = {"temperature": temperature}
         async with httpx.AsyncClient(timeout=120.0) as client:
-            response = await client.post(
-                f"{self._base_url}/api/generate",
-                json={"model": self._model, "prompt": prompt, "stream": False},
-            )
-
+            response = await client.post(f"{self._base_url}/api/generate", json=payload)
             response.raise_for_status()
 
             return str(response.json()["response"])
