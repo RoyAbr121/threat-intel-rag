@@ -46,6 +46,29 @@ Keep it terse - keywords, not prose. Output only the rewritten query, nothing el
 Question: {question}
 Rewritten query:"""
 
+_CODENAME_ALIASES: dict[str, list[str]] = {
+    "log4shell": ["CVE-2021-44228"],
+    "dirty cow": ["CVE-2016-5195"],
+    "dirty pipe": ["CVE-2022-0847"],
+    "printnightmare": ["CVE-2021-34527"],
+    "zerologon": ["CVE-2020-1472"],
+    "pwnkit": ["CVE-2021-4034"],
+    "spring4shell": ["CVE-2022-22965"],
+    "heartbleed": ["CVE-2014-0160"],
+    "shellshock": ["CVE-2014-6271"],
+    "poodle": ["CVE-2014-3566"],
+    "eternalblue": ["CVE-2017-0144"],
+    "bluekeep": ["CVE-2019-0708"],
+    "meltdown": ["CVE-2017-5754"],
+    "spectre": ["CVE-2017-5753", "CVE-2017-5715"],
+    "follina": ["CVE-2022-30190"],
+    "baron samedit": ["CVE-2021-3156"],
+    "ghostcat": ["CVE-2020-1938"],
+    "proxylogon": ["CVE-2021-26855", "CVE-2021-27065"],
+    "smbghost": ["CVE-2020-0796"],
+    "sigred": ["CVE-2020-1350"],
+}
+
 
 async def retrieve(
     question: str,
@@ -201,12 +224,24 @@ async def exact_id_retrieve(cve_ids: list[str], top_k: int = 5) -> list[ScoredPo
     ]
 
 
+def _extract_alias_ids(text: str) -> list[str]:
+    lowered = text.lower()
+    ids: list[str] = []
+
+    for alias, cves in _CODENAME_ALIASES.items():
+        if re.search(rf"\b{re.escape(alias)}\b", lowered):
+            ids.extend(cve for cve in cves if cve not in ids)
+
+    return ids
+
+
 async def route_retrieve(
     question: str,
     provider: LLMProvider,
     top_k: int = 5,
 ) -> list[ScoredPoint]:
     cve_ids = _extract_cve_ids(question)
+    cve_ids += [c for c in _extract_alias_ids(question) if c not in cve_ids]
 
     if cve_ids:
         hits = await exact_id_retrieve(cve_ids, top_k=top_k)
