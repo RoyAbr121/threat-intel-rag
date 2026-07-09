@@ -89,6 +89,59 @@
 
 **Variance check.** All disagreement across the three runs is confined to the fall-through LLM path (q21/q22 flapped 0.5 ↔ 0), consistent with the 3.4 finding. The routed core is deterministic.
 
+### Step 3.6a — Pool diagnostic on the product-recall failures — COMPLETE
+
+**Re-scoping.** Step 3.6's original target (multi-entity decomposition) was mooted by 3.5's multi-ID routing. All 11 surviving failures (q21–q27/q30/q31 medium, q42/q43 hard) are product queries. Three candidate fixes (KEV importance metadata, product filtering, golden-set review) address *different* failure modes, so per the 3.1 method we measured before building: `diagnose_pool.py` upgraded to observe the expected CVE's rank at three points in the production cascade — raw-question RRF pool, augmented-query RRF pool, post-rerank — plus the post-rerank top-5, on the failing questions only.
+
+**Two rows are quiet successes.** q25's `CVE-2021-21972` (post-rerank rank 1) and q24's `CVE-2018-11776` (rank 3) are scoring — those questions sit at 0.5, matching 3.5's "zero/partial". The target is the other 17 rows.
+
+**The 17 failing rows re-cut by mechanism — one disease, three depths.** Every bucket is the same root cause, *no importance prior*, expressed at different depths of the cascade:
+
+- **Reranker demotion** — aug-pool near-top, post-rerank buried: q21 (5→16, 6→11), q22 `CVE-2017-0144` (2→23), q31 (3→45), q42 `CVE-2017-5638` (3→13). q22 and q31 would score *today* if we kept the RRF order and never reranked. Mechanism: the cross-encoder has no IDF and CVE IDs tokenize to near-meaningless subwords, so among 50 same-product descriptions it can't tell the famous record from the rest and shuffles it semi-arbitrarily. This is exactly the failure 3.2 held **score-blending** in reserve for — now data-justified (→ 3.6d).
+- **Buried in the crowd** — rank ~30–46 at every stage, no stage ever prefers it: q27 (36/39/39), q30 (38/46/21), `CVE-2018-11776` raw 31/37.
+- **Absent** — misses the 50-deep pool entirely: q23 (both), q26 (both), q43 (both), q25's `CVE-2021-22005`. The same-product crowd is larger than the pool. No scoring change can fix this — pool *composition* must change (→ 3.6c).
+
+**Downgraded verdict: "expansion problem".** q24's `CVE-2017-5638` went raw rank 35 → aug-pool ABSENT — the appended expansion pushed it out. Real, but not a rewrite defect: a rank-35 record in a crowded pool is one perturbation from the cutoff either way, and this was a single run on the stochastic path. It does *refine* 3.3's claim that augmentation "can only add noise, never destroy the anchor": true for the anchor *token*, but appended tokens can still reshuffle a marginal record out of a crowded pool.
+
+**Validity wrinkle for the golden set.** q30's post-rerank top-5 already contains `CVE-2021-22893` — a KEV-listed pre-auth Pulse Secure vulnerability that is arguably a correct answer the golden set didn't pin. An importance prior will surface KEV competitors too, so some residual "failures" may be scoring artifacts of pinning one famous CVE where several exist. Golden-set validity review queued for after 3.6c/d.
+
+### Step 3.6b — KEV importance signal stamped into the index — COMPLETE
+
+**Concept — realized vs theoretical.** Every stage we have (BM25, dense, cross-encoder, rewrite) scores *query↔document relevance*, and for product queries dozens of records are genuinely relevant — relevance is saturated. What distinguishes the pinned CVEs is a query-independent **document prior**: the world considers them important. Source: the CISA **Known Exploited Vulnerabilities** catalog — confirmed exploitation in the wild, curated by a third party, machine-readable. KEV membership (~0.7% of CVEs) measures *realized exploitation*; CVSS measures *theoretical severity* — the golden set's "famous" tracks the former. All 15 distinct pinned CVEs in the failing set are KEV members: the signal aligns with the eval essentially perfectly.
+
+**What we built.** `ingestion/kev.py` — fetch the KEV feed, then `set_payload` `known_exploited: true` onto `cve_hybrid` in `MatchAny` batches on the `cve_id` payload index. `set_payload` is a server-side *merge* (unlike `upsert`, which replaces the whole point), so no vectors move and no scroll is needed — cheaper than even the 3.1 reindex trick. Filter-based selection makes KEV entries absent from the corpus a silent no-op. `ensure_kev_index()` adds a `BOOL` payload index for 3.6c's filtered prefetch. CLI: `ingest-kev`. Only the boolean is stamped — `dateAdded`/ransomware fields have no consumer yet; re-stamping is one cheap idempotent command.
+
+**Verified: catalog 1,635 → stamped 1,071; all 15 failing pinned CVEs confirmed stamped.** Shortfall fully attributed: 121 catalog CVEs are pre-2014 (outside the ingestion window); the remaining 443 (~29% of the 1,514 in-window KEV CVEs) are corpus coverage gaps. That rate is consistent with the index being a ~185k subset of the full 2014→present NVD corpus — i.e. KEV CVEs appear to be missing at roughly the corpus's general gap rate, not selectively — but note the comparison rests on an *estimated* NVD total (~250–270k), not an independently verified count.
+
+**Implication worth stating plainly:** ~3 in 10 known-exploited CVEs are unretrievable *at any rank* until corpus coverage improves. That's an ingestion ceiling, not a retrieval problem; the golden set's corpus-validation rule shields the eval from it, but it caps what the system can honestly claim.
+
+**Known limitation (accepted).** The payload overlay is fragile: any future re-ingestion `upsert`s whole points and silently wipes the flag, so `ingest-kev` must re-run after any reindex. Production fix — fold a KEV lookup into the pipeline's normalize step — deferred until ingestion is next touched.
+
+**Next:** 3.6c — KEV-filtered prefetch branches in `hybrid_retrieve()` (reserved lanes: KEV records compete only among themselves for pool entry, fixing the absent bucket). Claim verified by the diagnostic (pool entry), eval row recorded separately; if entry doesn't convert to top-5, that cleanly scopes 3.6d (score-blending / KEV-aware ranking) for the demotion and buried buckets.
+
+### Step 3.6c — KEV-filtered prefetch lanes — COMPLETE
+
+**What we built.** Two additional prefetch branches in `hybrid_retrieve()` (`query/rag.py`) — one dense, one BM25 — each filtered to `known_exploited=true` via `_KEV_FILTER`, each with `limit=top_k`; the two main branches are unchanged (`top_k * 4`, unfiltered). Inside a filtered branch, the 1,071 KEV records compete only among themselves, so a query-relevant KEV record reaches RRF fusion with a strong branch rank regardless of how many non-KEV siblings exist. Because RRF is unweighted, branch *count* is the weighting mechanism: a record found by all four branches sums four reciprocal-rank votes where a non-KEV record can collect at most two. This is a deliberate structural bias toward exploited-in-the-wild records, stated plainly. All retrievers above `hybrid_retrieve()` (rerank → rewrite → route) inherit the change; the exact-ID routed path never calls it and is untouched.
+
+**Claim verified: 6 of the 7 previously-absent rows entered the pool.** Post-change diagnostic on the former absent bucket (caveat: "raw-pool" now also includes the KEV lanes, since `hybrid_retrieve()` changed globally — ranks are not directly comparable to the 3.6a diagnostic):
+
+| CVE (question) | raw-pool | aug-pool | post-rerank |
+|---|---|---|---|
+| CVE-2022-0847 (q23) | 24 | 25 | 47 |
+| CVE-2021-22005 (q25) | 8 | 7 | 28 |
+| CVE-2020-5902 (q26) | 6 | **0** | 25 |
+| CVE-2022-1388 (q26) | 2 | 2 | 12 |
+| CVE-2019-19781 (q43) | 16 | 17 | 30 |
+| CVE-2019-11510 (q43) | 5 | 11 | 31 |
+
+**Sole holdout: `CVE-2016-5195` (Dirty COW, q23), still absent from every pool.** Likely cause (plausible mechanism, not verified): within-KEV crowding — KEV itself contains dozens of Linux-kernel privilege-escalation entries (Android, Qualcomm, GPU-driver CVEs), so 5195 must rank top-50 *within the KEV lane* for "linux kernel privilege escalation" and does not, while Dirty Pipe does (rank 24). The reserved lane shrinks the arena; it does not eliminate crowding. q23 is also the weakest question in the golden set — "privilege escalation affecting the Linux kernel" has hundreds of legitimate answers — flagged for the validity review.
+
+**Eval (three runs): easy 1.00 / 1.00 / 1.00 · medium 0.38 / 0.42 / 0.33 · hard 0.81 / 0.81 / 0.81.** Hard 0.75 → 0.81 is the first KEV-attributable eval gain, and it is stable: q42's `CVE-2017-5638` flipped 0 → 0.5 in all three runs. (It sat at post-rerank 13 in the 3.6a diagnostic; the inference — not re-diagnosed — is that the KEV lanes changed pool composition enough that it now survives the re-sort.) Medium is statistically unchanged from 3.5: the same 0.33–0.42 band, driven by the same fall-through flappers (q21 flapped 0 ↔ 0.5, q22 flapped 0.5 ↔ 0). Easy held 1.00, confirming the routed core does not touch this code path.
+
+**Every pool entrant was then demoted by the cross-encoder** — aug-pool → post-rerank: 0 → 25, 2 → 12, 7 → 28, 11 → 31, 17 → 30, 25 → 47. q26 would score 1.0 today on the RRF order alone (both expected CVEs in the aug-pool top-5; the eval scores it 0). The residual failure class has therefore collapsed from three buckets to a single mechanism: the final re-sort gives the cross-encoder absolute authority, discarding both the fusion consensus and the importance prior.
+
+**Next: 3.6d — KEV-aware final ranking.** The diagnostic discriminates between the two reserved designs. Score-blending (cross-encoder + RRF rank, held in reserve since 3.2) alone would rescue the strong-fusion rows (q21, q22, q26, q31) but cannot reach the still-buried ones (q27 ~36, q30 ~38–46, q43 at 11/17, 0847 at 24–25). A KEV term in the final score reaches those, and pools are KEV-sparse enough for it to be nearly surgical. Known cost, already visible: q43's current top-5 contains `CVE-2021-22893` — KEV-listed, Pulse Secure, pre-auth, arguably a correct answer the golden set never pinned — so promoting KEV records makes the golden-set validity review mandatory after 3.6d, not optional.
+
 ## Phase 2 — Naive RAG Baseline
 
 ### Step 2.5 — Baseline evaluation
@@ -107,10 +160,13 @@
 | **rewrite** — LLM augment (temp 0) → rerank, top-5 | 0.55 | 0.25 | 0.38 | — | — | $0 (local Ollama) |
 | **route** — exact-ID short-circuit, else rewrite | 0.70* | 0.25 | 0.31* | — | — | $0 (local Ollama) |
 | **route+alias** — codename→ID table feeds exact route | 1.00 | 0.42† | 0.75 | — | — | $0 (local Ollama) |
+| **route+alias+KEV lanes** — KEV-filtered prefetch branches | 1.00 | 0.38‡ | 0.81 | — | — | $0 (local Ollama) |
 
 \* Fall-through variance, not a routing effect (temp 0 is low-variance, not zero-variance — see Step 3.4): easy hit 0.75 in one of three runs (q18 flapped within-session); hard's q41 scored 0.50 in the earlier rewrite eval but 0.00 in all three route runs on the identical code path (cross-session drift).
 
 † 0.33 in one of three runs — q21/q22 flapped 0.5 ↔ 0 on the fall-through path. Easy and hard were identical across all three runs; all 28 routed questions have zero variance (see Step 3.5).
+
+‡ Medium varied across all three runs (0.38 / 0.42 / 0.33; 0.38 is the median, no stable value exists) — the same q21/q22 fall-through flap as the route+alias row, so medium is statistically unchanged. Easy and hard were identical across all three runs; hard's 0.75 → 0.81 is q42's `CVE-2017-5638` flipping 0 → 0.5, stable in all three runs (see Step 3.6c).
 
 > Fill the baseline row from `uv run python evals/run_baseline.py` then `… score`. Faithfulness / p95 / cost columns land in Phases 3 and 5; later rows: hybrid → rerank → agentic → cached.
 

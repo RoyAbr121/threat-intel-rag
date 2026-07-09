@@ -13,6 +13,7 @@ from qdrant_client.models import (
     Fusion,
     FusionQuery,
     MatchAny,
+    MatchValue,
     Prefetch,
     ScoredPoint,
     SparseVector,
@@ -68,6 +69,10 @@ _CODENAME_ALIASES: dict[str, list[str]] = {
     "smbghost": ["CVE-2020-0796"],
     "sigred": ["CVE-2020-1350"],
 }
+
+_KEV_FILTER = Filter(
+    must=[FieldCondition(key="known_exploited", match=MatchValue(value=True))]
+)
 
 
 async def retrieve(
@@ -128,20 +133,21 @@ async def hybrid_retrieve(
 ) -> list[ScoredPoint]:
     dense = await provider.embed(question)
     sparse = next(iter(_bm25().query_embed(question)))
+    sparse_query = SparseVector(
+        indices=sparse.indices.tolist(),
+        values=sparse.values.tolist(),
+    )
     qdrant = get_client()
 
     return qdrant.query_points(
         collection_name=HYBRID_COLLECTION_NAME,
         prefetch=[
             Prefetch(query=dense, using="dense", limit=top_k * 4),
-            Prefetch(
-                query=SparseVector(
-                    indices=sparse.indices.tolist(),
-                    values=sparse.values.tolist(),
-                ),
-                using="bm25",
-                limit=top_k * 4,
-            ),
+            Prefetch(query=sparse_query, using="bm25", limit=top_k * 4),
+            # reserved lanes: KEV records compete only among themselves,
+            # so exploited-in-the-wild CVEs always reach the fusion stage
+            Prefetch(query=dense, using="dense", limit=top_k, filter=_KEV_FILTER),
+            Prefetch(query=sparse_query, using="bm25", limit=top_k, filter=_KEV_FILTER),
         ],
         query=FusionQuery(fusion=Fusion.RRF),
         limit=top_k,
