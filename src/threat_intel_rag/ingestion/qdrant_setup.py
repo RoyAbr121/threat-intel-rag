@@ -16,6 +16,14 @@ HYBRID_COLLECTION_NAME = "cve_hybrid"
 VECTOR_SIZE = 768
 
 
+def get_client() -> QdrantClient:
+    return QdrantClient(
+        host=settings.qdrant_host,
+        port=settings.qdrant_port,
+        check_compatibility=False,
+    )
+
+
 def ensure_collection() -> None:
     client = get_client()
     existing = {c.name for c in client.get_collections().collections}
@@ -66,9 +74,9 @@ def ensure_hybrid_collection() -> None:
         )
 
 
-def get_client() -> QdrantClient:
-    return QdrantClient(
-        host=settings.qdrant_host,
-        port=settings.qdrant_port,
-        check_compatibility=False,
+def ensure_kev_index() -> None:
+    get_client().create_payload_index(
+        collection_name=HYBRID_COLLECTION_NAME,
+        field_name="known_exploited",
+        field_schema=PayloadSchemaType.BOOL,
     )

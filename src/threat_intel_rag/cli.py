@@ -8,8 +8,16 @@ import httpx
 from qdrant_client.models import ScoredPoint
 
 from threat_intel_rag.config import settings
+from threat_intel_rag.ingestion.kev import (
+    fetch_kev_ids,
+    stamp_known_exploited,
+)
 from threat_intel_rag.ingestion.pipeline import ingest_cves
-from threat_intel_rag.ingestion.qdrant_setup import COLLECTION_NAME, get_client
+from threat_intel_rag.ingestion.qdrant_setup import (
+    COLLECTION_NAME,
+    ensure_kev_index,
+    get_client,
+)
 
 
 async def embed_query(text: str) -> list[float]:
@@ -60,6 +68,8 @@ def main() -> None:
     search_parser.add_argument("query", type=str)
     search_parser.add_argument("--top-k", type=int, default=5)
 
+    subparsers.add_parser("ingest-kev", help="Stamp CISA KEV flags onto cve_hybrid")
+
     args = parser.parse_args()
 
     if args.command == "ingest":
@@ -77,6 +87,12 @@ def main() -> None:
             payload = hit.payload or {}
             print(f"\n[{payload.get('cve_id')}] score={hit.score:.4f}")
             print(payload.get("text", "")[:200])
+
+    elif args.command == "ingest-kev":
+        kev_ids = asyncio.run(fetch_kev_ids())
+        ensure_kev_index()
+        stamped = stamp_known_exploited(kev_ids)
+        print(f"KEV catalog: {len(kev_ids)} CVEs; stamped in index: {stamped}")
 
 
 if __name__ == "__main__":
