@@ -74,6 +74,12 @@ _KEV_FILTER = Filter(
     must=[FieldCondition(key="known_exploited", match=MatchValue(value=True))]
 )
 
+_RRF_K = 60  # standard RRF constant; one first-place vote = 1/60
+
+# one full branch vote for exploited-in-the-wild records; swept over
+# {0.0, 0.5, 1.0} votes in Step 3.6d — see NOTES.md for the ablation
+_KEV_BONUS = 1.0 / _RRF_K
+
 
 async def retrieve(
     question: str,
@@ -171,10 +177,23 @@ async def rerank_retrieve(
         return []
 
     docs = [(p.payload or {}).get("text", "") for p in pool]
-    scores = await asyncio.to_thread(lambda: list(_reranker().rerank(question, docs)))
+    ce_scores = await asyncio.to_thread(
+        lambda: list(_reranker().rerank(question, docs))
+    )
 
-    for point, score in zip(pool, scores, strict=True):
-        point.score = score
+    # blend by reciprocal rank, not raw score: CE logits and RRF sums live on
+    # incomparable scales, but rank is scale-free — this is RRF fusion with
+    # the cross-encoder as one more voter, plus a KEV vote-fraction
+    ce_order = sorted(range(len(pool)), key=lambda i: ce_scores[i], reverse=True)
+    ce_rank = {i: r for r, i in enumerate(ce_order)}
+
+    for fusion_rank, point in enumerate(pool):
+        is_kev = bool((point.payload or {}).get("known_exploited"))
+        point.score = (
+            1.0 / (_RRF_K + fusion_rank)
+            + 1.0 / (_RRF_K + ce_rank[fusion_rank])
+            + (_KEV_BONUS if is_kev else 0.0)
+        )
 
     pool.sort(key=lambda p: p.score, reverse=True)
 

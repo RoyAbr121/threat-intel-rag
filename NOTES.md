@@ -142,6 +142,28 @@
 
 **Next: 3.6d — KEV-aware final ranking.** The diagnostic discriminates between the two reserved designs. Score-blending (cross-encoder + RRF rank, held in reserve since 3.2) alone would rescue the strong-fusion rows (q21, q22, q26, q31) but cannot reach the still-buried ones (q27 ~36, q30 ~38–46, q43 at 11/17, 0847 at 24–25). A KEV term in the final score reaches those, and pools are KEV-sparse enough for it to be nearly surgical. Known cost, already visible: q43's current top-5 contains `CVE-2021-22893` — KEV-listed, Pulse Secure, pre-auth, arguably a correct answer the golden set never pinned — so promoting KEV records makes the golden-set validity review mandatory after 3.6d, not optional.
 
+### Step 3.6d — KEV-aware final ranking (reciprocal-rank blend) — COMPLETE
+
+**What we built.** `rerank_retrieve()` no longer gives the cross-encoder absolute authority. The final score is a reciprocal-rank blend: `1/(60 + rrf_rank) + 1/(60 + ce_rank) + 1/60 · [known_exploited]`. Rank, not raw score, because CE logits are unbounded and min-max normalizing them would make every score depend on the pool it appeared in; reciprocal rank is scale-free and is literally RRF's own math — so the design is one idea, not three: **RRF fusion with the cross-encoder as one more voter, plus KEV membership worth one first-place vote** (`1/60`).
+
+**Ablation — the reserved design question (blend weights vs boost form) was settled by sweep, not argument.** Three eval runs per weight:
+
+| `_KEV_BONUS` (votes) | easy | medium | hard |
+|---|---|---|---|
+| 0.0 (blend only) | 1.00 | 0.50 (×3 identical) | 0.81 (×3 identical) |
+| 0.5 | 1.00 | 0.62 (0.67 once — q22 flapped up) | 0.75 (×3) |
+| **1.0 (shipped)** | **1.00** | **0.62 (×3 identical)** | **0.75 (×3 identical)** |
+
+**Both mechanisms did exactly their assigned jobs.** The blend alone (0-vote row) lifted medium from 3.6c's 0.33–0.42 band to a stable 0.50 by rescuing the reranker-demotion rows — the score-blending held in reserve since 3.2, now confirmed with a clean ablation row: q21 became a stable 1.0 (it was the flapper), and the six 3.6c-diagnostic CVEs all rose at the post-rerank stage (47→41, 28→14, 25→7, 12→3, 30→13, 31→14; expansions differ run-to-run so individual ranks carry noise, but the direction is uniform across all six). The KEV term then reached what the blend cannot: q26 0.5→1.0, q27 0→1.0, q42 0.5→1.0 (the buried bucket — full-bonus post-rerank: `CVE-2020-5902` 1, `CVE-2022-1388` 0, `CVE-2019-19781` 3, `CVE-2019-11510` 6). Net across the 40 pinned questions: **33.5 at one vote vs 32.5 blend-only.**
+
+**The q45 regression is the structural cost of the prior — and the displacement logic doubled as a payload probe.** q45 (runc container escape) went 1.0 → 0.0 the moment the bonus turned on: `CVE-2019-5736` sat at post-rerank rank 0 blend-only, 5 at half a vote, 24 at a full vote. A constant additive bonus cannot reorder KEV records among themselves, nor non-KEV among themselves — the only movement it permits is KEV records jumping non-KEV ones — so the displacement *proved* the record carried no `known_exploited` flag before the payload was ever queried (confirmed: `None`). Feed check: `CVE-2019-5736` is genuinely absent from the KEV catalog (1,637 entries at check time — up from 3.6b's 1,635, so the periodic re-stamp maintenance point is real). Stated honestly: **the KEV prior helps underspecified product queries (many legitimate answers → surface the exploited-in-the-wild one) and taxes specific lookups whose single correct answer isn't KEV.** q45 is the golden set's only question of the second kind, no intermediate weight saves it (hard is 0.75 at both 0.5 and 1.0 votes), and one vote wins on net recall — so the trade is taken and disclosed, not buried.
+
+**Variance.** All three shipped-weight sweep runs were identical, while the rewrite expansions still visibly wobbled between sweep configs (q27's expansion hallucinated a different pseudo-ID each time) — and a fourth confirming run (the committed `route_results.jsonl`) promptly demonstrated 3.4's low-variance-not-zero rule: q22 flapped up to 1.0 (medium 0.67). The blend raised the flap's *floor* — q22 oscillated 0 ↔ 0.5 in 3.5/3.6c and 0.5 ↔ 1.0 now — but did not remove the wobble; q22's second CVE still rides on whether the stochastic expansion happens to surface it. Shipped-weight medium across four runs: 0.62 / 0.62 / 0.62 / 0.67. Easy and hard were identical in all four.
+
+**Residual failures, and where they go.** Every remaining zero/partial is now on the validity-review docket rather than a retrieval to-do: q30 (post-rerank top-5 is five legitimate Pulse Secure pre-auth CVEs incl. KEV-listed `CVE-2021-22893/22894/22900`; the pinned `CVE-2019-11510` sits at rank 6), q43 (same competitor set; pinned pair at ranks 11–13), q31 (sibling Drupal core RCE `CVE-2018-7602` at rank 0 in every sweep config; pinned `CVE-2018-7600` at 7), q24/q25 (second pins at rank 5 — one place outside top-5), q23 (`CVE-2016-5195` still absent from the 50-pool, the 3.6c holdout; weakest question in the set), q45 (structural, above).
+
+**Next:** golden-set validity review — **mandatory before any further tuning**; tuning against invalid pins is fitting noise.
+
 ## Phase 2 — Naive RAG Baseline
 
 ### Step 2.5 — Baseline evaluation
@@ -161,12 +183,15 @@
 | **route** — exact-ID short-circuit, else rewrite | 0.70* | 0.25 | 0.31* | — | — | $0 (local Ollama) |
 | **route+alias** — codename→ID table feeds exact route | 1.00 | 0.42† | 0.75 | — | — | $0 (local Ollama) |
 | **route+alias+KEV lanes** — KEV-filtered prefetch branches | 1.00 | 0.38‡ | 0.81 | — | — | $0 (local Ollama) |
+| **route+alias+KEV blend** — reciprocal-rank blend (RRF + CE + KEV prior) | 1.00 | 0.62§ | 0.75§ | — | — | $0 (local Ollama) |
 
 \* Fall-through variance, not a routing effect (temp 0 is low-variance, not zero-variance — see Step 3.4): easy hit 0.75 in one of three runs (q18 flapped within-session); hard's q41 scored 0.50 in the earlier rewrite eval but 0.00 in all three route runs on the identical code path (cross-session drift).
 
 † 0.33 in one of three runs — q21/q22 flapped 0.5 ↔ 0 on the fall-through path. Easy and hard were identical across all three runs; all 28 routed questions have zero variance (see Step 3.5).
 
 ‡ Medium varied across all three runs (0.38 / 0.42 / 0.33; 0.38 is the median, no stable value exists) — the same q21/q22 fall-through flap as the route+alias row, so medium is statistically unchanged. Easy and hard were identical across all three runs; hard's 0.75 → 0.81 is q42's `CVE-2017-5638` flipping 0 → 0.5, stable in all three runs (see Step 3.6c).
+
+§ Medium 0.62 in all three sweep runs, 0.67 in a fourth confirming run (q22 flapped 0.5 ↔ 1.0 on the fall-through path — the flap's floor rose from 3.5/3.6c's 0 ↔ 0.5; the committed `route_results.jsonl` is the 0.67 run). Easy and hard identical across all four runs. Blend-only ablation (bonus 0): 1.00 / 0.50 / 0.81. Medium 0.50 → 0.62 is the KEV term recovering q26 and q27; hard 0.81 → 0.75 nets q42's gain (+0.5) against q45's loss (−1.0): q45's correct answer `CVE-2019-5736` is not in the KEV catalog (feed-verified) and was displaced by KEV competitors — the structural cost of the importance prior, +1.0 pinned question net (see Step 3.6d).
 
 > Fill the baseline row from `uv run python evals/run_baseline.py` then `… score`. Faithfulness / p95 / cost columns land in Phases 3 and 5; later rows: hybrid → rerank → agentic → cached.
 
