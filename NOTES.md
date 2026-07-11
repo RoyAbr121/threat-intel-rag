@@ -164,6 +164,36 @@
 
 **Next:** golden-set validity review — **mandatory before any further tuning**; tuning against invalid pins is fitting noise.
 
+### Step 3.7 — Golden-set validity review (golden set v2) — COMPLETE
+
+**Why this is a step and not housekeeping.** After 3.6d, every surviving zero/partial was *suspected* to be a scoring artifact — but suspicion isn't a verdict, and tuning retrieval against invalid pins is fitting noise. So the fixture got the same evidence-first treatment as the retrieval code: read what the corpus actually says about every pin and every competitor that outranked one, then decide per question.
+
+**The validity criterion.** A pinned question is valid iff (a) every pin is a correct answer to the question *as phrased*, and (b) the pin set is not an arbitrary subset of a much larger correct set. For product questions, the closure rule that makes (b) checkable: **pin the full KEV-listed subset matching the question's qualifiers, as witnessed in the corpus.** The subset boundary is third-party-defined (CISA) — pins become rule-derived, not taste-derived.
+
+**Evidence highlights.**
+
+- **The 3.6d entry mischaracterized q30's competitors — corrected and committed separately.** It called the top-5 "five legitimate pre-auth CVEs"; the index descriptions show only `CVE-2021-22893` is pre-auth, while `22894/22899/22900/8243` all require authentication. Two lessons: a plausible claim written without reading the source material was wrong; and the residual failure is partly *genuine* — **qualifier blindness**, no ranking stage encodes pre-auth vs authenticated. That's a real Phase 4 target (an agentic grading node can check qualifiers against retrieved text).
+- **No over-stamping.** Every `known_exploited` flag in the index corresponds to a live-feed entry (1,071 stamped ⊆ 1,637 feed). Together with 3.6b's coverage check, the overlay is now verified in both directions.
+- **Closure sets are small enough to be decisive.** Struts KEV∩corpus = exactly `{5638, 9791, 9805, 11776}` (a Zoho ManageEngine CVE text-matched "struts" and was excluded as a different product); Drupal = `{7600, 7602, 6340}`; Pulse pre-auth = `{11510, 22893}`; vCenter pre-auth = *seven* records — more than top-5 can hold, so multi-pinning was structurally impossible and the question had to narrow instead.
+
+**The seven verdicts** (all ratified):
+
+| q | change | reason |
+|---|---|---|
+| q23 | pinned → open-ended `[SKIP]` | dozens of correct KEV kernel privescs in-corpus; any pin is arbitrary. Medium pinned denominator 12 → 11 |
+| q24 | multi-pin `{5638, 9791, 9805, 11776}` | closed KEV Struts-RCE set; the 2-pin punished the system for retrieving equally-correct `9791`/`9805` |
+| q25 | reword (+ "remote code execution", + "from 2021"); pins `{21972, 21985, 22005}` | pre-auth closure (7) exceeds top-5; the two added qualifiers give a determinate 3-set |
+| q30 | multi-pin `{11510, 22893}` | exact pre-auth closure pair; `22893` was rank 0 and unpinned |
+| q31 | multi-pin `{7600, 7602, 6340}` | closed KEV Drupal-core-RCE set |
+| q43 | reword ("2019 … mass-exploited"); pins unchanged | `22893` (2021) legitimately fit the old phrasing; the year anchor makes the 2019 pair determinate |
+| q45 | unchanged | valid, unique answer; its 0.0 is the disclosed KEV-prior cost and stays as the canary for that trade |
+
+**Ruler discipline.** v2 changes what the metric *means*, so no v1 row is comparable to any v2 row. The v1 table is frozen as history; the current shipped config re-anchors a new v2 series (three fresh runs). All 35 unique v2 pins were corpus-validated before any run (`validate_golden.py`, migrated to `get_client()` — the last stray raw-client constructor from the 3.1 refactor, killing the version-mismatch warning).
+
+**Re-anchor result (route+alias+KEV blend, golden v2, three runs): easy 1.00 (×3) / medium 0.83 (0.87 in run 1 — q22's familiar 0.5 ↔ 1.0 flap) / hard 0.81 (×3).** The changed questions landed as designed: q25 reworded → **1.00** (the top-5 is now *entirely* vCenter pre-auth records, all three pins present); q24 **0.75** (`9791/9805/11776` in top-5; `5638` displaced by two wrong-product records — one of them the same Zoho CVE the closure grep flagged for mentioning Struts); q30 **0.5** (`22893` at rank 0; `11510` still behind the four *authenticated* Pulse CVEs); q31 **0.33** (`7602` only; wrong-product records outrank `7600`/`6340`); q43 **0.5** (`11510` recovered by the reword; `19781` absent — the top-5 is all Pulse, no Citrix); q45 **0.0** (the canary, as designed). What remains failing now fails for real, diagnosable reasons — **qualifier blindness** (q30: authenticated vs pre-auth), **sibling/wrong-product ranking** (q31, q24's residual), **cross-entity balance in comparison queries** (q43: one entity's records crowd out the other's), and the **KEV-prior tax** (q45) — not fixture noise. That's the honest failure inventory Phase 4's agentic layer (grading, per-entity retrieval) exists to attack.
+
+**Accepted residual ambiguity (disclosed, not fixed).** q42's "the *two major* Apache Struts RCE vulnerabilities" shares the many-correct-answers shape (`9805` is arguably as major as `11776`), but it was left as-is: it scores 1.0, and rewording a passing question is fixture churn with no measurement gain.
+
 ## Phase 2 — Naive RAG Baseline
 
 ### Step 2.5 — Baseline evaluation
@@ -184,6 +214,8 @@
 | **route+alias** — codename→ID table feeds exact route | 1.00 | 0.42† | 0.75 | — | — | $0 (local Ollama) |
 | **route+alias+KEV lanes** — KEV-filtered prefetch branches | 1.00 | 0.38‡ | 0.81 | — | — | $0 (local Ollama) |
 | **route+alias+KEV blend** — reciprocal-rank blend (RRF + CE + KEV prior) | 1.00 | 0.62§ | 0.75§ | — | — | $0 (local Ollama) |
+| — **golden set v2** (Step 3.7: 6 questions re-pinned/reworded; rows below are a new series, not comparable to rows above) — | | | | | | |
+| **route+alias+KEV blend** — same system, golden v2 | 1.00 | 0.83¶ | 0.81¶ | — | — | $0 (local Ollama) |
 
 \* Fall-through variance, not a routing effect (temp 0 is low-variance, not zero-variance — see Step 3.4): easy hit 0.75 in one of three runs (q18 flapped within-session); hard's q41 scored 0.50 in the earlier rewrite eval but 0.00 in all three route runs on the identical code path (cross-session drift).
 
@@ -191,7 +223,9 @@
 
 ‡ Medium varied across all three runs (0.38 / 0.42 / 0.33; 0.38 is the median, no stable value exists) — the same q21/q22 fall-through flap as the route+alias row, so medium is statistically unchanged. Easy and hard were identical across all three runs; hard's 0.75 → 0.81 is q42's `CVE-2017-5638` flipping 0 → 0.5, stable in all three runs (see Step 3.6c).
 
-§ Medium 0.62 in all three sweep runs, 0.67 in a fourth confirming run (q22 flapped 0.5 ↔ 1.0 on the fall-through path — the flap's floor rose from 3.5/3.6c's 0 ↔ 0.5; the committed `route_results.jsonl` is the 0.67 run). Easy and hard identical across all four runs. Blend-only ablation (bonus 0): 1.00 / 0.50 / 0.81. Medium 0.50 → 0.62 is the KEV term recovering q26 and q27; hard 0.81 → 0.75 nets q42's gain (+0.5) against q45's loss (−1.0): q45's correct answer `CVE-2019-5736` is not in the KEV catalog (feed-verified) and was displaced by KEV competitors — the structural cost of the importance prior, +1.0 pinned question net (see Step 3.6d).
+§ Medium 0.62 in all three sweep runs, 0.67 in a fourth confirming run (q22 flapped 0.5 ↔ 1.0 on the fall-through path — the flap's floor rose from 3.5/3.6c's 0 ↔ 0.5). Easy and hard identical across all four runs. Blend-only ablation (bonus 0): 1.00 / 0.50 / 0.81. Medium 0.50 → 0.62 is the KEV term recovering q26 and q27; hard 0.81 → 0.75 nets q42's gain (+0.5) against q45's loss (−1.0): q45's correct answer `CVE-2019-5736` is not in the KEV catalog (feed-verified) and was displaced by KEV competitors — the structural cost of the importance prior, +1.0 pinned question net (see Step 3.6d).
+
+¶ Golden v2: medium is over 11 pinned questions (q23 became open-ended), and the multi-pinned questions demand more from the same top-5 — the v2 mean is *not* an improvement over the v1 row above; it is a different, fairer measurement. Medium 0.83 / 0.83 / 0.87 across three runs (q22's flap again); hard 0.81 stable ×3. The committed `route_results.jsonl` is run 3 (medium 0.83). Remaining sub-1.0 rows are the diagnosed real failures: q30 qualifier blindness, q31/q24 sibling and wrong-product ranking, q43 cross-entity crowding, q45 KEV-prior tax (see Step 3.7).
 
 > Fill the baseline row from `uv run python evals/run_baseline.py` then `… score`. Faithfulness / p95 / cost columns land in Phases 3 and 5; later rows: hybrid → rerank → agentic → cached.
 

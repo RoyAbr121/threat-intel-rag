@@ -6,8 +6,7 @@ from pathlib import Path
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
-from threat_intel_rag.config import settings
-from threat_intel_rag.ingestion.qdrant_setup import COLLECTION_NAME
+from threat_intel_rag.ingestion.qdrant_setup import COLLECTION_NAME, get_client
 
 QUESTIONS_PATH = Path(__file__).parent / "golden_questions.jsonl"
 
@@ -31,7 +30,7 @@ def main() -> None:
     ]
 
     expected = sorted({cve for q in questions for cve in q["expected_cves"]})
-    client = QdrantClient(host=settings.qdrant_host, port=settings.qdrant_port)
+    client = get_client()
     missing = [cve for cve in expected if not cve_exists(client, cve)]
 
     print(
