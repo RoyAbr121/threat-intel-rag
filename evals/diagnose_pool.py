@@ -11,7 +11,7 @@ from threat_intel_rag.llm.ollama import OllamaProvider
 from threat_intel_rag.query.rag import hybrid_retrieve, rerank_retrieve, rewrite_query
 
 QUESTIONS = Path(__file__).parent / "golden_questions.jsonl"
-POOL = 50  # matches rerank_retrieve's candidates default
+POOL = 50  # deliberately deeper than production candidates=20 so ranks stay observable
 
 
 # The 3.5 residual failure set: every zero/partial question, all category=product

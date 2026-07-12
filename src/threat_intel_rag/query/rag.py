@@ -169,7 +169,7 @@ async def rerank_retrieve(
     question: str,
     provider: LLMProvider,
     top_k: int = 5,
-    candidates: int = 50,
+    candidates: int = 20,
 ) -> list[ScoredPoint]:
     pool = await hybrid_retrieve(question, provider, top_k=candidates)
 
