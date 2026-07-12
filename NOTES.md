@@ -194,6 +194,26 @@
 
 **Accepted residual ambiguity (disclosed, not fixed).** q42's "the *two major* Apache Struts RCE vulnerabilities" shares the many-correct-answers shape (`9805` is arguably as major as `11776`), but it was left as-is: it scores 1.0, and rewording a passing question is fixture churn with no measurement gain.
 
+### Step 3.8 — `candidates` sweep + latency columns — COMPLETE
+
+**Rationale.** `candidates=50` has been provisional since 3.2 — chosen because the pool diagnostic defined "in-pool" as top-50, never swept. The deferral comes due before Phase 3 wraps. One subtlety the sweep must acknowledge: `candidates` is a *coupled* knob — it sets the main prefetch depth (`4×` per branch), the KEV-lane width (`1×`), and the cross-encoder input size (`1×`, the linear-cost term) all at once. This is a depth sweep of the whole cascade, not a reranker-cost knob in isolation.
+
+**Latency methodology.** `run_baseline.py` now times every question twice — `retrieval_ms` (the retriever call) and `total_ms` (retrieval + generation) — and `score()` prints p50/p95 for both. Two timers because end-to-end time is dominated by 8B generation, which would completely mask a retrieval regression; the sweep only touches retrieval. Disclosed: the latency population is *mixed* — 28 of 50 questions take the routed path (a single Qdrant `scroll`, no embed, no LLM, no rerank) while fall-through questions pay embed + rewrite LLM call + deep hybrid + cross-encoder — so retrieval p50 and p95 describe different code paths, which is not a flaw but the routing architecture's point.
+
+**Sweep result (golden v2, route config; three runs each at 20 and 100, one timed run at 50 plus the three 3.7 re-anchor runs).**
+
+| `candidates` | easy | medium | hard | retrieval p95 (per-run median) |
+|---|---|---|---|---|
+| **20 (shipped)** | 1.00 ×3 | **0.86 ×3** (exactly 0.8561) | 0.81 ×3 | ≈4.1 s |
+| 50 | 1.00 | 0.83 in three of four runs (0.87 once — q22 flap in a 3.7 run) | 0.81 | ≈5.5 s (single timed run) |
+| 100 | 1.00 ×3 | 0.83 ×3 (exactly 0.8258) | 0.81 ×3 | ≈6.3 s |
+
+**Verdict: 20 strictly dominates — recall up, latency down, nothing worse anywhere.** Across all seven sweep runs exactly one per-question score moved: **q31**, where `CVE-2018-7600` reaches top-5 only at depth 20 (0.67 vs 0.33; the other non-perfect rows — q22 0.5, q24 0.75, q30 0.5, q43 0.5, q45 0.0 — are identical in every run of every config). And **100 is byte-identical to 50 on recall, every question, every run** — the extra depth bought literally nothing. The mechanism inverts the naive "deeper pool = more recall" intuition, consistent with 3.6a's crowding analysis: `7600` was already *in* the pool at every depth (aug-pool rank 1 in the 3.6d diagnostics) — extra depth only admits more same-product/KEV crowd that collects cross-encoder and KEV votes above it in the blend. Depth taxed ranking without buying recall. `candidates=20` shipped as the default; `diagnose_pool.py` keeps `POOL=50` deliberately, so diagnostic ranks stay observable beyond the production cutoff. Caveat, stated plainly: the recall half of the verdict rests on one question's stable flip; the robust argument for 20 is dominance — no metric got worse and the fall-through path got ~25% faster at p95.
+
+**Latency result.** The distribution is the routing architecture made visible. 29 of 50 questions route (the 28 scored routed questions plus open-ended q50, whose "Log4Shell" mention fires the alias): their retrieval is a single Qdrant `scroll`, and since they are the majority, retrieval **p50 ≈ 0.32–0.36 s** is the routed path's cost. Retrieval **p95 ≈ 4.1 s at depth 20** is the fall-through path: rewrite LLM call + embed + deep hybrid + cross-encoder. The rewrite cost is depth-independent, so the p95 climb 4.1 → 5.5 → 6.3 s across 20 → 50 → 100 is the depth-dependent share (cross-encoder input size + prefetch depth). End-to-end is another world entirely: **p50 ≈ 13–18 s, p95 ≈ 30–38 s in every config** — 8B generation dwarfs retrieval, which is exactly why the harness times the two separately (a 1.4 s retrieval regression would vanish inside generation noise). The e2e p50 spread across identical-config runs (e.g. 17.9 / 12.9 / 12.5 s at depth 20) is Ollama server-state drift, not a retrieval signal.
+
+**Phase 3 wrap.** From the naive-dense baseline to the final architecture — exact-ID/alias routing → LLM rewrite (augment, temp 0) → hybrid RRF with KEV lanes → reciprocal-rank blend with KEV prior, `candidates=20` — context recall went **0.05 / 0.04 / 0.38 (v1 baseline) → 1.00 / 0.62 / 0.75 (v1 final) → 1.00 / 0.86 / 0.81 on the honest golden-v2 ruler**, at $0 inference cost throughout. Deferred out of phase, disclosed: the faithfulness column lands with Langfuse in Phase 5; prompt hardening (the training-data-leakage known issue) moves into Phase 4's generation work. Phase 4 inherits a fully diagnosed failure inventory: qualifier blindness (q30), sibling/wrong-product ranking (q31, q24's residual), cross-entity crowding in comparisons (q43), and the KEV-prior tax (q45).
+
 ## Phase 2 — Naive RAG Baseline
 
 ### Step 2.5 — Baseline evaluation
@@ -215,7 +235,8 @@
 | **route+alias+KEV lanes** — KEV-filtered prefetch branches | 1.00 | 0.38‡ | 0.81 | — | — | $0 (local Ollama) |
 | **route+alias+KEV blend** — reciprocal-rank blend (RRF + CE + KEV prior) | 1.00 | 0.62§ | 0.75§ | — | — | $0 (local Ollama) |
 | — **golden set v2** (Step 3.7: 6 questions re-pinned/reworded; rows below are a new series, not comparable to rows above) — | | | | | | |
-| **route+alias+KEV blend** — same system, golden v2 | 1.00 | 0.83¶ | 0.81¶ | — | — | $0 (local Ollama) |
+| **route+alias+KEV blend** — same system, golden v2 | 1.00 | 0.83¶ | 0.81¶ | — | 33 s e2e / 5.5 s retrieval†† | $0 (local Ollama) |
+| **route+alias+KEV blend, candidates=20** — depth sweep (3.8) | 1.00 | 0.86†† | 0.81†† | — | 33 s e2e / 4.1 s retrieval†† | $0 (local Ollama) |
 
 \* Fall-through variance, not a routing effect (temp 0 is low-variance, not zero-variance — see Step 3.4): easy hit 0.75 in one of three runs (q18 flapped within-session); hard's q41 scored 0.50 in the earlier rewrite eval but 0.00 in all three route runs on the identical code path (cross-session drift).
 
@@ -225,7 +246,9 @@
 
 § Medium 0.62 in all three sweep runs, 0.67 in a fourth confirming run (q22 flapped 0.5 ↔ 1.0 on the fall-through path — the flap's floor rose from 3.5/3.6c's 0 ↔ 0.5). Easy and hard identical across all four runs. Blend-only ablation (bonus 0): 1.00 / 0.50 / 0.81. Medium 0.50 → 0.62 is the KEV term recovering q26 and q27; hard 0.81 → 0.75 nets q42's gain (+0.5) against q45's loss (−1.0): q45's correct answer `CVE-2019-5736` is not in the KEV catalog (feed-verified) and was displaced by KEV competitors — the structural cost of the importance prior, +1.0 pinned question net (see Step 3.6d).
 
-¶ Golden v2: medium is over 11 pinned questions (q23 became open-ended), and the multi-pinned questions demand more from the same top-5 — the v2 mean is *not* an improvement over the v1 row above; it is a different, fairer measurement. Medium 0.83 / 0.83 / 0.87 across three runs (q22's flap again); hard 0.81 stable ×3. The committed `route_results.jsonl` is run 3 (medium 0.83). Remaining sub-1.0 rows are the diagnosed real failures: q30 qualifier blindness, q31/q24 sibling and wrong-product ranking, q43 cross-entity crowding, q45 KEV-prior tax (see Step 3.7).
+¶ Golden v2: medium is over 11 pinned questions (q23 became open-ended), and the multi-pinned questions demand more from the same top-5 — the v2 mean is *not* an improvement over the v1 row above; it is a different, fairer measurement. Medium 0.87 / 0.83 / 0.83 across three runs (q22's flap again); hard 0.81 stable ×3. Remaining sub-1.0 rows are the diagnosed real failures: q30 qualifier blindness, q31/q24 sibling and wrong-product ranking, q43 cross-entity crowding, q45 KEV-prior tax (see Step 3.7).
+
+†† `candidates` depth sweep, Step 3.8 (golden v2, ×3 runs at 20 and 100, one timed run at 50): medium 0.86 / 0.83 / 0.83 at 20 / 50 / 100 — the only per-question mover in the whole sweep is q31 (0.67 at depth 20, 0.33 at 50 and 100); 100 is recall-identical to 50 on every question. Hard 0.81 in all ten v2 runs to date. Latency cells are per-run medians of the harness's p95 figures (the 50-point's from its single timed run); retrieval p95 is the fall-through path (rewrite LLM call + rerank; 21 of 50 questions), retrieval p50 ≈ 0.3 s is the routed path (29 of 50, a single Qdrant scroll). End-to-end p95 ≈ 30–38 s in every config — dominated by 8B generation. The committed `route_results.jsonl` is sweep run 3 at candidates=20.
 
 > Fill the baseline row from `uv run python evals/run_baseline.py` then `… score`. Faithfulness / p95 / cost columns land in Phases 3 and 5; later rows: hybrid → rerank → agentic → cached.
 
