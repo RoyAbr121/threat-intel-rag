@@ -43,6 +43,10 @@ volumes/
 corpus_nvd.jsonl
 *.log
 
+# Live eval outputs — scratch, overwritten every run.
+# The committed record lives in evals/archive/ (deliberate, stage-named copies).
+evals/*_results.jsonl
+
 # Distribution / packaging
 *.tar.gz
 *.whl
