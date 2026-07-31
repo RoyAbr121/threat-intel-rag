@@ -7,12 +7,14 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
+from threat_intel_rag.agent.graph import build_graph
 from threat_intel_rag.llm.ollama import OllamaProvider
-from threat_intel_rag.query.rag import rag_stream
 
 logger = structlog.get_logger()
 
 app = FastAPI(title="Threat Intel RAG", version="0.1.0")
+provider = OllamaProvider()
+graph = build_graph(provider)
 
 
 @app.get("/health")
@@ -38,9 +40,14 @@ class QueryRequest(BaseModel):
 @app.post("/v1/query")
 async def query(request: QueryRequest) -> StreamingResponse:
     provider = OllamaProvider()
+    graph = build_graph(provider)
 
     async def event_stream() -> AsyncGenerator[str, None]:
-        async for token in rag_stream(request.question, provider, request.top_k):
+        stream = graph.astream(
+            {"question": request.question, "top_k": request.top_k},
+            stream_mode="custom",
+        )
+        async for token in stream:
             yield f"data: {token}\n\n"
         yield "data: [DONE]\n\n"
 

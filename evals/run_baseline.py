@@ -9,8 +9,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from langgraph.graph.state import CompiledStateGraph
 from qdrant_client.models import ScoredPoint
 
+from threat_intel_rag.agent.graph import AgentState, build_graph
 from threat_intel_rag.llm.ollama import OllamaProvider
 from threat_intel_rag.query.rag import (
     hybrid_retrieve,
@@ -28,6 +30,7 @@ HYBRID_RESULTS_PATH = EVALS_DIR / "hybrid_results.jsonl"
 RERANK_RESULTS_PATH = EVALS_DIR / "rerank_results.jsonl"
 REWRITE_RESULTS_PATH = EVALS_DIR / "rewrite_results.jsonl"
 ROUTE_RESULTS_PATH = EVALS_DIR / "route_results.jsonl"
+AGENT_RESULTS_PATH = EVALS_DIR / "agent_results.jsonl"
 
 Retriever = Callable[[str, OllamaProvider, int], Awaitable[list[ScoredPoint]]]
 
@@ -53,11 +56,42 @@ async def run_one(
     return "".join(tokens), retrieved_cves, retrieval_ms, total_ms
 
 
-async def main(retriever: Retriever, results_path: Path) -> None:
-    provider = OllamaProvider()
+async def run_one_agent(
+    graph: CompiledStateGraph[AgentState], question: str
+) -> tuple[str, list[str], float, float]:
+    start = time.perf_counter()
+    retrieval_ms = 0.0
+    retrieved_cves: list[str] = []
+    tokens: list[str] = []
+
+    stream = graph.astream(
+        {"question": question, "top_k": 5}, stream_mode=["updates", "custom"]
+    )
+
+    async for mode, chunk in stream:
+        if mode == "custom":
+            tokens.append(chunk)
+            print(chunk, end="", flush=True)
+        elif isinstance(chunk, dict) and "retrieve" in chunk:
+            retrieval_ms = (time.perf_counter() - start) * 1000
+            hits = chunk["retrieve"]["hits"]
+            retrieved_cves = [(h.payload or {}).get("cve_id", "") for h in hits]
+
+    total_ms = (time.perf_counter() - start) * 1000
+    print()
+    return "".join(tokens), retrieved_cves, retrieval_ms, total_ms
+
+
+async def main(
+    provider: OllamaProvider,
+    retriever: Retriever | None,
+    graph: CompiledStateGraph[AgentState] | None,
+    questions_path: Path,
+    results_path: Path,
+) -> None:
     questions = [
         json.loads(line)
-        for line in QUESTIONS_PATH.read_text(encoding="utf-8").splitlines()
+        for line in questions_path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
 
@@ -67,9 +101,16 @@ async def main(retriever: Retriever, results_path: Path) -> None:
         q_str = f"[{q['id']}] ({q['difficulty']}) {q['question']}"
         q_line = f"{'=' * len(q_str)}"
         print(f"\n{q_line}\n{q_str}\n{q_line}")
-        answer, retrieved_cves, retrieval_ms, total_ms = await run_one(
-            provider, q["question"], retriever
-        )
+
+        if graph is not None:
+            answer, retrieved_cves, retrieval_ms, total_ms = await run_one_agent(
+                graph, q["question"]
+            )
+        else:
+            assert retriever is not None
+            answer, retrieved_cves, retrieval_ms, total_ms = await run_one(
+                provider, q["question"], retriever
+            )
 
         results.append(
             {
@@ -156,21 +197,28 @@ def _latency_summary(results: list[dict[str, Any]]) -> None:
 
 if __name__ == "__main__":
     args = sys.argv[1:]
-    retriever: Retriever
-    results_path: Path
+    retriever: Retriever | None
 
-    if "route" in args:
-        retriever, results_path = route_retrieve, ROUTE_RESULTS_PATH
+    if "agent" in args:
+        retriever, mode = None, "agent"
+    elif "route" in args:
+        retriever, mode = route_retrieve, "route"
     elif "rewrite" in args:
-        retriever, results_path = rewrite_retrieve, REWRITE_RESULTS_PATH
+        retriever, mode = rewrite_retrieve, "rewrite"
     elif "rerank" in args:
-        retriever, results_path = rerank_retrieve, RERANK_RESULTS_PATH
+        retriever, mode = rerank_retrieve, "rerank"
     elif "hybrid" in args:
-        retriever, results_path = hybrid_retrieve, HYBRID_RESULTS_PATH
+        retriever, mode = hybrid_retrieve, "hybrid"
     else:
-        retriever, results_path = retrieve, RESULTS_PATH
+        retriever, mode = retrieve, "baseline"
+
+    version = "v1" if "v1" in args else "v2"
+    questions_path = EVALS_DIR / f"{version}_golden_questions.jsonl"
+    results_path = EVALS_DIR / f"{version}_{mode}_results.jsonl"
 
     if "score" in args:
         score(results_path)
     else:
-        asyncio.run(main(retriever, results_path))
+        provider = OllamaProvider()
+        graph = build_graph(provider) if retriever is None else None
+        asyncio.run(main(provider, retriever, graph, questions_path, results_path))

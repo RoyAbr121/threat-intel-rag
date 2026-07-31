@@ -41,3 +41,4 @@ v1 and v2 scores are separate series — never compare across the boundary.
 |---|---|---|---|
 | `v2_route_results_3.7_reanchor.jsonl` | `a989244` | 3.7 re-anchor, candidates=50 | 1.00 / 0.83 / 0.81 |
 | `v2_route_results_3.8_candidates20.jsonl` | `bc1f7bc` | 3.8 shipped, candidates=20 | 1.00 / 0.86 / 0.81 |
+| `v2_agent_results_4.1_graph_wraps_route.jsonl` | Step 4.1 commit | 4.1 LangGraph substrate — graph wrapping the unchanged route cascade, no retrieval change (all 29 routed questions byte-identical to the 3.8 run; medium delta is q22's up-flap) | 1.00 / 0.90 / 0.81 |

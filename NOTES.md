@@ -1,3 +1,17 @@
+## Phase 4 — Agentic Layer
+
+### Step 4.1 — LangGraph substrate (no-op graph skeleton) — COMPLETE
+
+**What we built.** `agent/graph.py`: `AgentState` (TypedDict: `question`/`top_k` in, `hits`/`answer` out) + `build_graph(provider)` — a two-node `StateGraph`, `START → retrieve → generate → END`. The retrieve node is a thin adapter over the unchanged `route_retrieve()`; the generate node runs `stream_answer()`, emitting each token through `get_stream_writer()` (the graph's `custom` stream channel) *while* accumulating the full answer into state. One generation, two consumers: the token stream is ephemeral display data, the committed `answer` is durable state (what 4.2's GRADE will read and 4.5's checkpointing will snapshot). Services (the provider) enter nodes by closure, never through state — state is data.
+
+**Finding en route: the API had been serving Phase 2 all along.** `POST /v1/query` still called `rag_stream()` → naive dense `retrieve()` — the 0.05/0.04/0.38 system — while every Phase 3 gain lived only where the eval called `route_retrieve()` directly. Nothing forced the two entry points to share a path. The graph is now the single entry point (`app.py` consumes `graph.astream(stream_mode="custom")` for SSE; graph built once at module level, not per request — a shared instance is prerequisite for 4.5 checkpointing); `rag_stream()` deleted.
+
+**Harness.** `run_baseline.py agent` measures the graph as deployed via `stream_mode=["updates", "custom"]` — the `updates` channel timestamps the retrieve node (retrieval_ms) and carries the hits; `custom` carries tokens. A `v1`/`v2` flag now derives *both* the golden file (`{v}_golden_questions.jsonl`) and the results file (`{v}_{mode}_results.jsonl`) from one token, so a results filename always names its ruler. Live results are gitignored scratch; the committed record is `evals/archive/` (every historical golden set and per-stage result, extracted from git history with provenance — see its README). mypy lesson en route: `"retrieve" in chunk` cannot narrow a `str |`-union (`in` is valid on `str` too); the `isinstance(chunk, dict)` guard is the structural fix, and honest — a token containing the substring "retrieve" would have corrupted the timing record.
+
+**Verification — a pure substrate change, proven three ways.** (1) Eval: easy **1.00** ×1 / medium **0.90** (q22's documented 0.5 ↔ 1.0 up-flap; shipped-band otherwise, all other non-perfect rows byte-equal to 3.8: q24 0.75, q30 0.5, q31 0.67, q43 0.5, q45 0.0) / hard **0.81**. (2) Per-question diff vs the archived 3.8 route run: **all 29 routed questions retrieved byte-identically**; all 11 differing questions are fall-through (the known LLM-rewrite wobble). The deterministic core is the only place a wrapper bug could hide from aggregates, and it's clean. (3) Latency: retrieval p50 338 ms / p95 4.5 s, e2e p50 17.9 s — all within the 3.8 bands; LangGraph orchestration cost is invisible. SSE smoke test passed (`CVE-2016-5195` streams a correct Dirty COW answer — a question the old endpoint's naive dense path scored 0 on).
+
+**Next:** 4.2 — GRADE node: LLM grades retrieved records against the question's qualifiers (pre-auth vs authenticated, year, RCE); targets q30, the qualifier-blindness failure no ranking stage can encode. First data-dependent edge in the graph.
+
 ## Phase 3 — Retrieval Quality
 
 ### Step 3.1 — Hybrid retrieval (BM25 + dense, RRF) — COMPLETE

@@ -8,7 +8,7 @@ from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from threat_intel_rag.ingestion.qdrant_setup import COLLECTION_NAME, get_client
 
-QUESTIONS_PATH = Path(__file__).parent / "golden_questions.jsonl"
+QUESTIONS_PATH = Path(__file__).parent / "v2_golden_questions.jsonl"
 
 
 def cve_exists(client: QdrantClient, cve_id: str) -> bool:

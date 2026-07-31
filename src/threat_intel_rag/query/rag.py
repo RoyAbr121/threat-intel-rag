@@ -116,17 +116,6 @@ async def stream_answer(
         yield token
 
 
-async def rag_stream(
-    question: str,
-    provider: LLMProvider,
-    top_k: int = 5,
-) -> AsyncGenerator[str, None]:
-    hits = await retrieve(question, provider, top_k)
-
-    async for token in stream_answer(question, hits, provider):
-        yield token
-
-
 @lru_cache(maxsize=1)
 def _bm25() -> SparseTextEmbedding:
     return SparseTextEmbedding(model_name="Qdrant/bm25")
