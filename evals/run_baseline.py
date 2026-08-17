@@ -72,10 +72,16 @@ async def run_one_agent(
         if mode == "custom":
             tokens.append(chunk)
             print(chunk, end="", flush=True)
-        elif isinstance(chunk, dict) and "retrieve" in chunk:
-            retrieval_ms = (time.perf_counter() - start) * 1000
-            hits = chunk["retrieve"]["hits"]
-            retrieved_cves = [(h.payload or {}).get("cve_id", "") for h in hits]
+        elif isinstance(chunk, dict):
+            if "retrieve" in chunk:
+                retrieval_ms = (time.perf_counter() - start) * 1000
+
+            # grade overwrites retrieve: score what generate will actually see
+            node_update = chunk.get("grade") or chunk.get("retrieve")
+
+            if node_update and "hits" in node_update:
+                hits = node_update["hits"]
+                retrieved_cves = [(h.payload or {}).get("cve_id", "") for h in hits]
 
     total_ms = (time.perf_counter() - start) * 1000
     print()

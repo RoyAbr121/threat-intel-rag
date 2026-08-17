@@ -249,13 +249,19 @@ def _extract_alias_ids(text: str) -> list[str]:
     return ids
 
 
+def resolve_lookup_ids(question: str) -> list[str]:
+    cve_ids = _extract_cve_ids(question)
+    cve_ids += [c for c in _extract_alias_ids(question) if c not in cve_ids]
+
+    return cve_ids
+
+
 async def route_retrieve(
     question: str,
     provider: LLMProvider,
     top_k: int = 5,
 ) -> list[ScoredPoint]:
-    cve_ids = _extract_cve_ids(question)
-    cve_ids += [c for c in _extract_alias_ids(question) if c not in cve_ids]
+    cve_ids = resolve_lookup_ids(question)
 
     if cve_ids:
         hits = await exact_id_retrieve(cve_ids, top_k=top_k)

@@ -47,6 +47,10 @@ corpus_nvd.jsonl
 # The committed record lives in evals/archive/ (deliberate, stage-named copies).
 evals/*_results.jsonl
 
+# Step artifacts — rich HTML write-ups with diagrams and per-question evidence.
+# Untracked for now; published copies live as Claude artifacts.
+artifacts/
+
 # Distribution / packaging
 *.tar.gz
 *.whl
