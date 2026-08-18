@@ -57,6 +57,12 @@ Four findings fall out of that table. **(1) A vocabulary gap, quoted from the mo
 
 **Next:** 4.3 — REFINE / per-entity retrieval (q43's cross-entity crowding: every retrieved record is Pulse, no Citrix; also the q50 router-precision fix). Two items carry forward from this step: probe q21 to confirm the `45046` miss is retrieval-side, and probe q45 to confirm the KEV-tax mechanism before deciding whether 4.6 still exists. The measured case for escalating *this one node* to a frontier model is now on record — six configurations of local ceiling — and would make a clean eval row: local vs frontier delta on the same graph.
 
+### Step 4.2a — Entry-point correctness — COMPLETE
+
+**What we built.** Four fixes to the one path no test had ever crossed. `/v1/query` now shares the module-level compiled graph instead of rebuilding it per request (the 4.1 entry claimed this was already true — it wasn't; the endpoint shadowed the module-level `provider`/`graph` with fresh locals). SSE payloads are JSON-encoded through a new `_sse()`. `_WIDE_TOP_K`, defined in 4.2 and never referenced, is replaced by `_RETRY_HEADROOM = 5` — the value the retry actually used — so the constant now describes the code. Dead weight removed: the superseded `_GRADE_TEMPLATE` variant and debug print in `graph.py`, seven stale path constants in `run_baseline.py` (one naming a file that no longer exists). Three pure tests cover the framing.
+
+**The bug: SSE is line-oriented, and we were writing content into the framing.** The protocol's grammar is `data: <value>\n` per field, blank line terminates the event — so a newline inside a value is *structure*, not text. `f"data: {token}\n\n"` therefore broke on any token containing `\n`: the client read a truncated event and the newline vanished. The smoke test caught it on the single token that mattered. Streaming the Dirty COW answer emits exactly one multi-line token, `".\n\n"` — the paragraph break between the prose and its citation. Old code put `data: .` on the wire followed by three blank lines; the answer rendered as `...feature.[CVE-2016-5195]` jammed together, plus two spurious empty events. `json.dumps` guarantees a single-line payload (`\n` → the two characters `\` `n`), which is why the OpenAI streaming API does the same. `[DONE]` is deliberately left unencoded: it is a sentinel in the framing layer, not payload, so clients can test the raw line before parsing.
+
 ## Phase 3 — Retrieval Quality
 
 ### Step 3.1 — Hybrid retrieval (BM25 + dense, RRF) — COMPLETE
