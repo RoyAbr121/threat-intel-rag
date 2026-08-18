@@ -19,37 +19,8 @@ from threat_intel_rag.query.rag import (
 # everything at 10 (dilution) and at 1 (nothing to compare against)
 _GRADE_BATCH = 5
 
-# _GRADE_TEMPLATE = """\
-# You are checking search results against a question's stated conditions.
-
-# Question: {question}
-
-# Records:
-# {records}
-
-# These phrases mean the same thing:
-# - "pre-authentication", "pre-auth", "unauthenticated", "without \
-# authentication", "no credentials required", "remote unauthenticated" - the \
-# attacker needs no valid account.
-# - "authenticated", "post-authentication", "authenticated attacker", \
-# "requires a valid session" - the attacker needs a valid account.
-# - "remote code execution", "RCE", "arbitrary code execution", "execute \
-# arbitrary commands" - the same class of impact.
-
-# For each record above, decide whether its own text satisfies EVERY condition \
-# the question states - such as authentication requirements, a year, a \
-# vulnerability type, or a specific product. Judge only from the record text; \
-# do not use outside knowledge. Answer "drop" only if the record text clearly \
-# contradicts a condition; if the text is silent, or you are unsure, answer \
-# "keep".
-
-# Output one line per record and nothing else, in exactly this format:
-# CVE-0000-0000: keep
-# CVE-0000-0000: drop
-
-# Include all {count} records.
-# """
-
+_RETRY_HEADROOM = 5
+_MAX_ATTEMPTS = 2
 
 _GRADE_TEMPLATE = """\
 You are checking search results against a question's stated conditions.
@@ -162,7 +133,9 @@ def build_graph(provider: LLMProvider) -> CompiledStateGraph[AgentState]:
 
         else:
             # the retry: same cascade, same depth, wider final cut
-            hits = await rewrite_retrieve(state["question"], provider, top_k=top_k + 5)
+            hits = await rewrite_retrieve(
+                state["question"], provider, top_k=top_k + _RETRY_HEADROOM
+            )
 
         return {"hits": hits, "routed": False, "attempts": attempts + 1}
 

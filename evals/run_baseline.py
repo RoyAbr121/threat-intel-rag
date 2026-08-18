@@ -24,13 +24,6 @@ from threat_intel_rag.query.rag import (
 )
 
 EVALS_DIR = Path(__file__).parent
-QUESTIONS_PATH = EVALS_DIR / "golden_questions.jsonl"
-RESULTS_PATH = EVALS_DIR / "baseline_results.jsonl"
-HYBRID_RESULTS_PATH = EVALS_DIR / "hybrid_results.jsonl"
-RERANK_RESULTS_PATH = EVALS_DIR / "rerank_results.jsonl"
-REWRITE_RESULTS_PATH = EVALS_DIR / "rewrite_results.jsonl"
-ROUTE_RESULTS_PATH = EVALS_DIR / "route_results.jsonl"
-AGENT_RESULTS_PATH = EVALS_DIR / "agent_results.jsonl"
 
 Retriever = Callable[[str, OllamaProvider, int], Awaitable[list[ScoredPoint]]]
 
