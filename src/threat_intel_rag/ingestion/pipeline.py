@@ -30,6 +30,15 @@ def normalize_cve(cve: CveDetail) -> str | None:
     return f"{cve.id}{severity}\n{description}"
 
 
+def cvss_payload(cve: CveDetail) -> dict[str, float | str]:
+    if not cve.metrics.cvss_metric_v31:
+        return {}
+
+    data = cve.metrics.cvss_metric_v31[0].cvss_data
+
+    return {"cvss_score": data.base_score, "cvss_severity": data.base_severity}
+
+
 def content_hash(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
@@ -105,6 +114,7 @@ async def ingest_cves(
                                 "embed_model": settings.ollama_embed_model,
                                 "published": cve.published.isoformat(),
                                 "text": text,
+                                **cvss_payload(cve),
                             },
                         )
                     ],

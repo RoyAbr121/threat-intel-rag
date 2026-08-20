@@ -80,3 +80,25 @@ def ensure_kev_index() -> None:
         field_name="known_exploited",
         field_schema=PayloadSchemaType.BOOL,
     )
+
+
+def ensure_metadata_indexes() -> None:
+    client = get_client()
+
+    client.create_payload_index(
+        collection_name=HYBRID_COLLECTION_NAME,
+        field_name="published",
+        field_schema=PayloadSchemaType.DATETIME,
+    )
+
+    client.create_payload_index(
+        collection_name=HYBRID_COLLECTION_NAME,
+        field_name="cvss_score",
+        field_schema=PayloadSchemaType.FLOAT,
+    )
+
+    client.create_payload_index(
+        collection_name=HYBRID_COLLECTION_NAME,
+        field_name="cvss_severity",
+        field_schema=PayloadSchemaType.KEYWORD,
+    )

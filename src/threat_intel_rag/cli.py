@@ -12,10 +12,12 @@ from threat_intel_rag.ingestion.kev import (
     fetch_kev_ids,
     stamp_known_exploited,
 )
+from threat_intel_rag.ingestion.metadata import backfill_cvss
 from threat_intel_rag.ingestion.pipeline import ingest_cves
 from threat_intel_rag.ingestion.qdrant_setup import (
     COLLECTION_NAME,
     ensure_kev_index,
+    ensure_metadata_indexes,
     get_client,
 )
 
@@ -70,6 +72,10 @@ def main() -> None:
 
     subparsers.add_parser("ingest-kev", help="Stamp CISA KEV flags onto cve_hybrid")
 
+    subparsers.add_parser(
+        "backfill-metadata", help="Index published + lift CVSS into payload"
+    )
+
     args = parser.parse_args()
 
     if args.command == "ingest":
@@ -93,6 +99,11 @@ def main() -> None:
         ensure_kev_index()
         stamped = stamp_known_exploited(kev_ids)
         print(f"KEV catalog: {len(kev_ids)} CVEs; stamped in index: {stamped}")
+
+    elif args.command == "backfill-metadata":
+        ensure_metadata_indexes()
+        scanned, stamped = backfill_cvss()
+        print(f"Scanned {scanned} records; stamped CVSS on {stamped}")
 
 
 if __name__ == "__main__":
