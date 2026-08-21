@@ -9,10 +9,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import httpx
 from langgraph.graph.state import CompiledStateGraph
 from qdrant_client.models import ScoredPoint
 
 from threat_intel_rag.agent.graph import AgentState, build_graph
+from threat_intel_rag.config import settings
 from threat_intel_rag.llm.ollama import OllamaProvider
 from threat_intel_rag.query.rag import (
     hybrid_retrieve,
@@ -26,6 +28,27 @@ from threat_intel_rag.query.rag import (
 EVALS_DIR = Path(__file__).parent
 
 Retriever = Callable[[str, OllamaProvider, int], Awaitable[list[ScoredPoint]]]
+
+
+def stack_fingerprint() -> dict[str, str]:
+    """Record what produced this run: Ollama's version and the exact models.
+
+    Ollama cannot fetch a model by content fingerprint the way Docker can, so
+    we pin the tag and record the digest. If a tag's contents ever change
+    upstream, two runs will report different digests and the drift is visible.
+    """
+    base = settings.ollama_base_url
+    version = httpx.get(f"{base}/api/version", timeout=10.0).json()["version"]
+    installed = httpx.get(f"{base}/api/tags", timeout=10.0).json()["models"]
+    digests = {m["name"]: m["digest"][:16] for m in installed}
+
+    return {
+        "ollama_version": version,
+        "llm_model": settings.ollama_llm_model,
+        "llm_digest": digests.get(settings.ollama_llm_model, "NOT-INSTALLED"),
+        "embed_model": settings.ollama_embed_model,
+        "embed_digest": digests.get(settings.ollama_embed_model, "NOT-INSTALLED"),
+    }
 
 
 async def run_one(
@@ -94,6 +117,9 @@ async def main(
         if line.strip()
     ]
 
+    stack = stack_fingerprint()
+    print(f"\nStack: {stack}\n")
+
     results = []
 
     for q in questions:
@@ -123,6 +149,7 @@ async def main(
                 "retrieval_ms": round(retrieval_ms, 1),
                 "total_ms": round(total_ms, 1),
                 "timestamp": datetime.now(UTC).isoformat(),
+                **stack,
             }
         )
 
@@ -136,6 +163,14 @@ def score(results_path: Path) -> None:
         for line in results_path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
+
+    if results and "ollama_version" in results[0]:
+        r = results[0]
+        print(
+            f"  [Stack] ollama {r['ollama_version']} | "
+            f"{r['llm_model']} ({r['llm_digest']}) | "
+            f"{r['embed_model']} ({r['embed_digest']})\n"
+        )
 
     by_difficulty: dict[str, list[float]] = {"easy": [], "medium": [], "hard": []}
 

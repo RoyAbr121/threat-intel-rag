@@ -20,8 +20,8 @@ class Settings(BaseSettings):
     qdrant_port: int = 6333
     rabbitmq_url: str = "amqp://guest:guest@localhost:5672/"
     ollama_base_url: str = "http://localhost:11434"
-    ollama_embed_model: str = "nomic-embed-text"
-    ollama_llm_model: str = "llama3.1"
+    ollama_embed_model: str = "nomic-embed-text:v1.5"
+    ollama_llm_model: str = "llama3.1:8b-instruct-q4_K_M"
 
 
 settings = Settings()

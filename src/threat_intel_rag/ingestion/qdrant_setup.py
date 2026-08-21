@@ -16,11 +16,19 @@ HYBRID_COLLECTION_NAME = "cve_hybrid"
 VECTOR_SIZE = 768
 
 
-def get_client() -> QdrantClient:
+def get_client(timeout: int | None = None) -> QdrantClient:
+    """The single Qdrant construction site (Step 3.1).
+
+    `timeout` exists for bulk maintenance only. A filtered update spanning the
+    whole collection can run for minutes, well past the default, and the client
+    stops waiting long before the server stops working. Leave it unset on every
+    path that serves a request — there, failing fast is the wanted behaviour.
+    """
     return QdrantClient(
         host=settings.qdrant_host,
         port=settings.qdrant_port,
         check_compatibility=False,
+        timeout=timeout,
     )
 
 

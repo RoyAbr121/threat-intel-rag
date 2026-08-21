@@ -12,10 +12,11 @@ from threat_intel_rag.ingestion.kev import (
     fetch_kev_ids,
     stamp_known_exploited,
 )
-from threat_intel_rag.ingestion.metadata import backfill_cvss
+from threat_intel_rag.ingestion.metadata import backfill_cvss, relabel_embed_model
 from threat_intel_rag.ingestion.pipeline import ingest_cves
 from threat_intel_rag.ingestion.qdrant_setup import (
     COLLECTION_NAME,
+    HYBRID_COLLECTION_NAME,
     ensure_kev_index,
     ensure_metadata_indexes,
     get_client,
@@ -76,6 +77,11 @@ def main() -> None:
         "backfill-metadata", help="Index published + lift CVSS into payload"
     )
 
+    subparsers.add_parser(
+        "relabel-embed-model",
+        help="Rewrite the legacy embed-model label to the pinned tag",
+    )
+
     args = parser.parse_args()
 
     if args.command == "ingest":
@@ -104,6 +110,14 @@ def main() -> None:
         ensure_metadata_indexes()
         scanned, stamped = backfill_cvss()
         print(f"Scanned {scanned} records; stamped CVSS on {stamped}")
+
+    elif args.command == "relabel-embed-model":
+        baseline, hybrid, rows = asyncio.run(relabel_embed_model())
+        print(
+            f"Relabelled to {settings.ollama_embed_model} — "
+            f"{COLLECTION_NAME}: {baseline}, {HYBRID_COLLECTION_NAME}: {hybrid}, "
+            f"postgres rows: {rows}"
+        )
 
 
 if __name__ == "__main__":
