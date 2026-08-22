@@ -269,3 +269,11 @@ NOTES.md                engineering journal — the reasoning behind every numbe
 ```
 
 `NOTES.md` is the most useful file in this repository if you want to know *why* rather than *what*. It records what was tried, what failed, what was measured, and several occasions where a confident claim turned out to be wrong.
+
+---
+
+## License
+
+MIT — see [`LICENSE`](LICENSE). You may use, modify, and redistribute this code, including commercially, provided the copyright notice is kept. It comes with no warranty.
+
+The indexed data carries no additional terms: NVD/CVE records and the CISA Known Exploited Vulnerabilities catalog are US government works in the public domain.
