@@ -34,7 +34,7 @@ say so. Cite the CVE IDs that support your answer.
 Context:
 {context}
 
-Question: {question}        
+Question: {question}
 
 Answer:"""
 

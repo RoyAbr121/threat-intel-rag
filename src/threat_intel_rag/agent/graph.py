@@ -19,6 +19,9 @@ from threat_intel_rag.query.rag import (
 # everything at 10 (dilution) and at 1 (nothing to compare against)
 _GRADE_BATCH = 5
 
+# retry widens the final cut, not the search depth: 3.8 showed extra depth
+# only admits more same-product crowd, while q30's missing record sits at
+# rank 6 - one place outside top_k
 _RETRY_HEADROOM = 5
 _MAX_ATTEMPTS = 2
 
@@ -51,13 +54,6 @@ CVE-0000-0000: drop
 
 Include all {count} records.
 """
-
-
-# retry widens the final cut, not the search depth: 3.8 showed extra depth
-# only admits more same-product crowd, while q30's missing record sits at
-# rank 6 - one place outside top_k
-_WIDE_TOP_K = 10
-_MAX_ATTEMPTS = 2
 
 
 class AgentState(TypedDict, total=False):
