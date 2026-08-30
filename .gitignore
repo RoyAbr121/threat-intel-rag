@@ -55,5 +55,7 @@ artifacts/
 *.tar.gz
 *.whl
 
-# Claude Code session guide — local only
-CLAUDE.md
+# CLAUDE.md is tracked from 2026-08-30. It is the session operating document,
+# and leaving it untracked meant its history was unrecoverable — a restructure
+# that halved it existed in exactly one place. See
+# docs/review-2026-08-30-remediation.md item 19.
