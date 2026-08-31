@@ -28,6 +28,25 @@ Every step follows this sequence, in order:
 
 When errors occur: walk through diagnostics, do not hand over the fix directly.
 
+### Step size — choose the tier before starting
+
+Not every change earns the full sequence. Uniform depth is what turns a two-line fix into an afternoon, and the cost is never the afternoon itself — it is whatever that afternoon displaced.
+
+**One test decides the tier:** does this change a number the eval reports, or an interface something else calls?
+
+- **Yes → full step.** The whole sequence above, plus a `NOTES.md` entry and its own commit.
+- **No → routine change.** Make it, run lint, types and tests, put the reasoning in the commit message. No overview artifact, no concepts section, no design-option comparison.
+
+Three rules keep the tier honest:
+
+1. **Pick the tier before starting, and say which one out loud.** Same discipline as writing eval predictions before the run. A tier chosen midway is chosen by what the task has already cost, which is exactly backwards.
+2. **Routine changes are timeboxed to 30 minutes.** Overrunning is information, not a reason to keep going: it means the change was not routine. Stop, reclassify as a full step, and restart it properly.
+3. **Verification is never dropped** — only the exposition around it. Ruff, mypy and pytest run at every tier. The routine tier drops the explaining, not the checking.
+
+This is a disclosure, not a shortcut. The brief's rule is that a skipped step must be surfaced explicitly rather than drifted past; naming the tier in the commit is what surfaces it.
+
+**Calibration from this repository's own history.** Full: the GRADE node (4.2), pinning the inference stack (4.3b), the `/v1/query` entry-point fix (4.2a — it changed what the served path returned). Routine: deleting the dead `_WIDE_TOP_K` constant, restoring the `_KEV_BONUS` comment, adding the MIT license, correcting the q30 competitor wording.
+
 ### Plain language — a hard rule, not a preference
 
 This is a learning project. Effort spent decoding phrasing is effort not spent on the engineering, so unexplained jargon is a defect in the explanation, not a style quibble.
