@@ -41,6 +41,32 @@ This is a learning project. Effort spent decoding phrasing is effort not spent o
 
 *(Established 2026-08-02 during Step 4.2; restated as a standing rule 2026-08-20 after the q43 investigation write-up used "dropping 3 / 1 / 1" and "goes every time" without explaining either.)*
 
+### Scope discipline — one target per session
+
+This project is a means to an end: building knowledge and engineering skill, and
+satisfying genuine curiosity. It competes for time with higher-priority work, and
+it will win that competition unfairly if nothing pushes back — engineering work is
+legible and controllable, while the higher-priority work is usually ambiguous and
+offers no reward in the short term. Curiosity is the engine here, which is why it
+needs a boundary rather than a brake.
+
+- **State the session's target before starting.** One sentence. Everything else that day is a
+  tangent by definition, however interesting.
+- **Capture, don't chase.** A tangent becomes a numbered item in
+  `docs/review-2026-08-30-remediation.md` or a `NOTES.md` entry — never a detour. Writing it down
+  is what makes it safe to not do now.
+- **The assistant should push back when a request is a tangent from the stated target**, rather
+  than simply answering it well. This has to be deliberate: every question gets a fast, decent
+  answer, which makes the next question feel free, and no cost signal arrives until the day is
+  gone. A human collaborator supplies that friction by raising an eyebrow; this setup supplies
+  none unless asked.
+- **Beware the remediation backlog specifically.** Twenty-one items with clear severities and
+  satisfying completion criteria is an excellent machine for deferring outreach indefinitely.
+  A portfolio at 80% with applications sent beats a portfolio at 100% with none.
+
+*(Established 2026-08-31, after a one-hour question branched into a full day and displaced the
+outreach and applications it was supposed to support.)*
+
 ## Current status
 
 **Phases 0–3: COMPLETE.** Foundations, ingestion and indexing, naive RAG baseline, retrieval quality.
