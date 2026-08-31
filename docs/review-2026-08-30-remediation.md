@@ -397,11 +397,16 @@ wrong-product eviction (item 14), let a **distractor rate** be computed without 
 Step 4.3's rationale states "there is no product field in the payload to filter on" — true, but
 that is a consequence of throwing the data away at ingest, not a fact about the corpus.
 
-**Cost warning, stated plainly.** Unlike Step 4.3a's CVSS backfill, this is **not** a free local
-operation. `corpus_nvd.jsonl` holds only the normalized output (`cve_id`, `embed_model`,
-`published`, `source`, `text`), so CPE is not recoverable from disk. It requires a full re-fetch of
-roughly 185,000 records from the rate-limited NVD API, then a `set_payload` overlay — days of
-wall-clock time, though no re-embedding and no vectors moved.
+**Cost, corrected 2026-08-30.** Unlike Step 4.3a's CVSS backfill, this is not a free local
+operation — `corpus_nvd.jsonl` holds only the normalized output (`cve_id`, `embed_model`,
+`published`, `source`, `text`), so CPE is not recoverable from disk and needs a re-fetch from the
+NVD API. **An earlier draft of this file called that "days of wall-clock time". That was wrong** —
+it was the *embedding* cost from the original ingest, which does not apply here, because CPE lands
+as a `set_payload` overlay with no vector recomputed. The real fetch cost: `NvdClient._paginate()`
+sleeps 6 seconds between pages, NVD returns up to 2,000 records per page, and the 2014→present
+range is about 39 windows of 119 days — so roughly 120–130 requests, **20–40 minutes of wall
+clock**. The work is parsing `configurations` into `CveDetail`, then the same group-IDs-by-value
+overlay trick 4.3a used for CVSS. Budget an afternoon, not a week.
 
 **Action.** This is a decision, not a task. Either commit to the re-fetch as its own step, or
 record explicitly that the system will not have product metadata and that items 10 and 14 take
