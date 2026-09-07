@@ -13,7 +13,7 @@ It is deliberately *not* a changelog. History lives elsewhere and should be read
 
 ## What this project is
 
-A production-grade Agentic RAG system that answers threat-intelligence questions over public cybersecurity corpora (NVD/CVE, MITRE ATT&CK, vendor advisories, detection rules, threat reports). Built as a portfolio artifact targeting AI backend engineering roles.
+A production-grade Agentic RAG system that answers threat-intelligence questions over public cybersecurity corpora (NVD/CVE, MITRE ATT&CK, vendor advisories, detection rules, threat reports).
 
 The full project brief is at `docs/project-brief.html`.
 
@@ -35,7 +35,7 @@ Not every change earns the full sequence. Uniform depth is what turns a two-line
 **One test decides the tier:** does this change a number the eval reports, or an interface something else calls?
 
 - **Yes → full step.** The whole sequence above, plus a `NOTES.md` entry and its own commit.
-- **No → routine change.** Make it, run lint, types and tests, put the reasoning in the commit message. No overview artifact, no concepts section, no design-option comparison.
+- **No → routine change.** Make it, run lint, types and tests, put the reasoning in the commit message. No overview artifact, no concepts section, no design-option comparison, just the rationale.
 
 Three rules keep the tier honest:
 
@@ -80,11 +80,7 @@ needs a boundary rather than a brake.
   gone. A human collaborator supplies that friction by raising an eyebrow; this setup supplies
   none unless asked.
 - **Beware the remediation backlog specifically.** Twenty-one items with clear severities and
-  satisfying completion criteria is an excellent machine for deferring outreach indefinitely.
-  A portfolio at 80% with applications sent beats a portfolio at 100% with none.
-
-*(Established 2026-08-31, after a one-hour question branched into a full day and displaced the
-outreach and applications it was supposed to support.)*
+  satisfying completion criteria is an excellent machine for deferring other, higher priority work.
 
 ## Current status
 
