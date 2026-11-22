@@ -84,7 +84,7 @@ differ, the reason is in the item detail.
 | 17 | Stack table overstated (LlamaIndex, Langfuse, Redis) | Low | P2 | **done (2026-08-30)** |
 | 18 | CPE / affected-product data discarded at ingest | **High** | *mine* | open (decision needed) |
 | 19 | `CLAUDE.md` was operating document plus changelog | Low | P2 | **done (2026-08-30)** |
-| 20 | "Code — typed, not pasted" may have quietly lapsed | Self-check | P2 | open (user's call) |
+| 20 | "Code — typed, not pasted" may have quietly lapsed | Self-check | P2 | **done (2026-11-22)** |
 | 21 | Portfolio reframe — held-out 0.78 beats self-authored 1.00 | **High** | P2 | open (follows 1) |
 
 ---
@@ -428,7 +428,7 @@ ruler, `candidates=20`, metadata-as-soft-signal, the overlay re-run requirement,
 deviations, and post-Phase-8 future work. Pre-edit copy was saved to the session scratchpad, which
 is temporary — and `CLAUDE.md` is gitignored, so there is no other copy.
 
-### 20 — "Code — typed, not pasted" may have lapsed · Self-check · open
+### 20 — "Code — typed, not pasted" may have lapsed · Self-check · **done (2026-11-22)**
 
 **Issue.** The methodology's third stage says code is shown for the user to type, not paste. The
 review asks, fairly, whether that survived Phase 4's volume.
@@ -442,6 +442,10 @@ the most work for the stated goal of actually understanding the system, so amend
 decision, not a formality.
 
 **Done when.** The rule is either confirmed as still followed or rewritten to match reality.
+
+**Closed.** Rewritten. The methodology's Generation stage now says the code is generated and the
+developer reviews it rather than typing it. The diagnostics-first rule for errors is unchanged.
+Reasoning is in `NOTES.md` under "Methodology change — generated code, reviewed".
 
 ### 21 — Portfolio reframe · High · open (follows item 1)
 
@@ -486,8 +490,9 @@ test in with the held-out set, because a broken product path would corrupt the f
 1. **Item 18 — CPE.** Commit to the NVD re-fetch, or accept permanently reduced forms of items 10
    and 14? This shapes several other items and should be decided before Step 4.3 hardens around
    its absence.
-2. **Item 20 — typed, not pasted.** Still holding at Phase 4 scale, or should the methodology be
-   amended to match what is actually happening?
+2. ~~**Item 20 — typed, not pasted.** Still holding at Phase 4 scale, or should the methodology be
+   amended to match what is actually happening?~~ **Answered 2026-11-22:** amended. Code is
+   generated and reviewed, not typed.
 3. **Tracking `CLAUDE.md`.** It is gitignored, so its history is unrecoverable and this session's
    restructure exists in one place. For a portfolio repository, tracking it would be defensible;
    that is a deliberate call, not an oversight to fix silently.

@@ -100,6 +100,10 @@ The brief's Phase 04 names three things the 4.3–4.6 plan never covered: a tool
 
 **Also decided this session:** LlamaIndex is dropped, not lost — `git log -S` shows it was never imported in any commit. CVE records are single-chunk, and Phase 3's Qdrant-native prefetch/fusion would have been hidden by a retriever abstraction. It returns for document parsing if long-form corpora (advisories, threat reports) are ever ingested, which per-corpus collections would allow without invalidating the eval series.
 
+### Methodology change — generated code, reviewed (decided 2026-11-22)
+
+**From here on, code is generated and reviewed, not typed.** The brief's stage three was "Code (typed, not pasted)", and backlog item 20 asked whether that rule had quietly lapsed at Phase 4's volume. Rather than keep a rule that was not being followed, the methodology now says what actually happens: the Generation stage produces the code for the chosen design, and the developer reviews it carefully. The learning effort moves to the Specification stage (choosing between three designs, with their trade-offs) and to review. Two things are unchanged. When something breaks, the diagnosis is still walked through rather than handed over. And `docs/project-brief.html` stays frozen: this is a recorded deviation from it, like the ones in the table above.
+
 ## Phase 3 — Retrieval Quality
 
 ### Step 3.1 — Hybrid retrieval (BM25 + dense, RRF) — COMPLETE

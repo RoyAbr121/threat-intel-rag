@@ -17,14 +17,34 @@ A production-grade Agentic RAG system that answers threat-intelligence questions
 
 The full project brief is at `docs/project-brief.html`.
 
-## Methodology — never skip this
+## Methodology - For a new phase, new feature or new technology
 
-Every step follows this sequence, in order:
-0. **Overview** — a clear picture of what we intend to do (should involve appropriate visual aids - flowcharts, diagrams, images, etc.)
-1. **Rationale** — what we're building, explain briefly why was it chosen over other options, and why it's sequenced here
-2. **Concepts** — the senior-level "why this works this way"
-3. **Code** — shown for the user to type (not paste)
-4. **Verification** — exact command, expected output, what failure means
+An artifact is created for each new phase or feature. The artifact contains the entire development process. Every phase follows this sequence:
+
+1. **Context** 
+Introduction to the current phase we are in, the reason for working on it, what we intend to achieve, why it is important, considerations the developer should know about, and whatever else is relevant for context to understand the development work.
+
+2. **Specification** 
+The senior-level "why this works this way". The developer is presented with the three best design options for them to choose based on what is required. Each solution has to comply with high standards: 
+
+  1. Correctness: correct logic and results, edge cases, input validation, as well as concurrency, parallelism and race conditions (if relevant)
+
+  2. Performance: scaling, bottlenecks
+
+  3. Maintainability: logging, error handling, proper documentation and comments
+  
+  4. Code Quality and Style: cognitive load reduction, Loose Coupling, Law of Demeter, SOLID Principles, comments and proper documentation
+
+All advantages and disadvantages are specified for each option. Considerations for each solution need to be presented and discussed. Possible breaking points and / or bottlenecks are noted. The developer chooses, and the solution is marked (the other options remain for future consideration and history). The reasons for choosing the solution are presented. 
+
+3. **Generation**
+The code is generated for the chosen solution from step 2. The developer examines and reviews it carefully. The developer does not type the code: review replaces the earlier "typed, not pasted" rule (decided 2026-11-22, closing backlog item 20).
+
+4. **Verification**
+The chosen solution is implemented in full and is verified to work as intended. Linting, type-checking, and the relevant tests are performed.
+
+5. **Operation**
+The new state of the project is accepted, properly documented and noted (including the results, conclusions, considerations, and bugs / errors disclosed fully and understandably). The state is saved, committed to git and pushed to the remote repository.
 
 When errors occur: walk through diagnostics, do not hand over the fix directly.
 
@@ -34,8 +54,8 @@ Not every change earns the full sequence. Uniform depth is what turns a two-line
 
 **One test decides the tier:** does this change a number the eval reports, or an interface something else calls?
 
-- **Yes → full step.** The whole sequence above, plus a `NOTES.md` entry and its own commit.
-- **No → routine change.** Make it, run lint, types and tests, put the reasoning in the commit message. No overview artifact, no concepts section, no design-option comparison, just the rationale.
+- **Yes → full step.** The whole five-stage sequence above — Context through Operation — including its artifact, a `NOTES.md` entry and its own commit.
+- **No → routine change.** Make it, run lint, types and tests, put the reasoning in the commit message. No artifact, no Context write-up, no three-option Specification — just the rationale.
 
 Three rules keep the tier honest:
 
@@ -62,7 +82,7 @@ This is a learning project. Effort spent decoding phrasing is effort not spent o
 
 ### Scope discipline — one target per session
 
-This project is a means to an end: building knowledge and engineering skill, and
+This project is a means to an end: enhancing knowledge, engineering skills, and
 satisfying genuine curiosity. It competes for time with higher-priority work, and
 it will win that competition unfairly if nothing pushes back — engineering work is
 legible and controllable, while the higher-priority work is usually ambiguous and
@@ -72,8 +92,7 @@ needs a boundary rather than a brake.
 - **State the session's target before starting.** One sentence. Everything else that day is a
   tangent by definition, however interesting.
 - **Capture, don't chase.** A tangent becomes a numbered item in
-  `docs/review-2026-08-30-remediation.md` or a `NOTES.md` entry — never a detour. Writing it down
-  is what makes it safe to not do now.
+  `docs/review-2026-08-30-remediation.md` or a `NOTES.md` entry — never a detour. Writing it down is what makes it safe to not do now.
 - **The assistant should push back when a request is a tangent from the stated target**, rather
   than simply answering it well. This has to be deliberate: every question gets a fast, decent
   answer, which makes the next question feel free, and no cost signal arrives until the day is
