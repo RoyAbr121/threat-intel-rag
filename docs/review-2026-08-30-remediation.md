@@ -75,7 +75,7 @@ differ, the reason is in the item detail.
 | 8 | "Provable no-op, no eval re-run" used as a substitute for measurement | Medium | P0 | open |
 | 9 | Generation is never measured | **High** | P0 | open |
 | 10 | No precision or distractor metric | **High** | P0 | open |
-| 11 | The 1.00/1.00/1.00 headline invites the wrong inference | Medium | P0 | open |
+| 11 | The 1.00/1.00/1.00 headline invites the wrong inference | Medium | P0 | **done (2026-11-22)** |
 | 12 | Latency regressed ~7× undefended; no service-level objective | **High** | P1 | open |
 | 13 | Grader non-determinism is load-bearing; ×3 runs are underpowered | **High** | P1 | open |
 | 14 | Principle/practice divergence — no LLM routing, but an LLM judge | Medium | P1 | open (blocked by 18) |
@@ -270,7 +270,7 @@ that looks like a quality score and is really a pin-count artefact.
 
 **Done when.** One of the two ships and is reported alongside recall.
 
-### 11 — The headline invites the wrong inference · Medium · open
+### 11 — The headline invites the wrong inference · Medium · **done (2026-11-22)**
 
 **Issue.** "1.00 / 1.00 / 1.00" reads as system quality. It is retrieval-only, on a self-authored
 ruler.
@@ -282,6 +282,8 @@ system was tuned against.* Ten minutes. Do it today; it costs nothing and it is 
 stops a future session — or a reader — from misreading the number.
 
 **Done when.** Both files carry the qualifier at the point the number appears.
+
+**Closed.** The README now carries the qualifier under its headline sentence and in the eval table's top-row footnote; `CLAUDE.md` carries it in the current-status line.
 
 ### 12 — Latency regressed ~7× undefended · High · open
 

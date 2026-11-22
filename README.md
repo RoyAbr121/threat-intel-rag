@@ -4,6 +4,8 @@ An agentic retrieval system that answers cybersecurity questions over NVD/CVE da
 
 Context recall on a 50-question golden set went from **0.05 / 0.04 / 0.38** (naive vector search) to **1.00 / 1.00 / 1.00**, at $0 inference cost, running entirely on local models.
 
+> **What that number measures, and what it does not.** It scores *retrieval only* — whether the right records reach the model — not the quality of the generated answer. And it was measured on a question set the system was tuned against: every retrieval decision in the table below was made while watching these same questions. It is training accuracy, not evidence of how the system does on questions it has never seen. A held-out question set is planned and will be reported as a separate series.
+
 > **Scope, stated plainly.** This is a single-corpus system: 185,477 NVD CVE records from 2014 onward. The project brief describes a five-corpus system (MITRE ATT&CK, vendor advisories, Sigma rules, threat reports) — those are **not built**, and the reasoning for deferring them is in [Future work](#future-work). There is no authentication, rate limiting, or multi-tenancy yet; those are Phase 6. Phases 0–3 are complete, Phase 4 is in progress.
 >
 > Full brief: [`docs/project-brief.html`](docs/project-brief.html) · Engineering journal: [`NOTES.md`](NOTES.md)
@@ -26,7 +28,7 @@ Context recall measures whether the CVE records a question needs actually reach 
 | Same system, on the honest ruler | 1.00 | 0.86 | 0.81 |
 | + LangGraph agent: grade node and one retry | 1.00 | **1.00**\* | **1.00**\* |
 
-\* Reproduced three times, including once after a deliberate model restart — but one question reaches 1.00 only because the grading step discards a record, and that decision was measured *varying* across identical calls (three runs on the same five records discarded 3, then 1, then 1). Read the top row as **"the ceiling is reachable"**, not "the system scores 1.00". Full write-up in `NOTES.md`.
+\* Retrieval only, on the same questions the system was tuned against (see the note at the top). Reproduced three times, including once after a deliberate model restart — but one question reaches 1.00 only because the grading step discards a record, and that decision was measured *varying* across identical calls (three runs on the same five records discarded 3, then 1, then 1). Read the top row as **"the ceiling is reachable"**, not "the system scores 1.00". Full write-up in `NOTES.md`.
 
 **Latency and cost:** retrieval p50 ≈ 0.34 s (the routed path — a single indexed lookup), p95 ≈ 28 s (the full agent path, including LLM rewriting, grading and a retry). End-to-end p95 ≈ 90 s, dominated by generation on an 8B local model. Cost per query: **$0**.
 

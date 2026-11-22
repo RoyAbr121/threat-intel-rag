@@ -107,7 +107,7 @@ needs a boundary rather than a brake.
 
 **Phase 4 — Agentic Layer: IN PROGRESS.** Complete: 4.1 LangGraph substrate · 4.2 grade node plus one wider retry · 4.2a entry-point correctness · 4.3a structured CVSS and publication-date metadata · 4.3b pinned inference stack.
 
-The current agent configuration scores **easy 1.00 / medium 1.00 / hard 1.00** on golden set v2, at 28.4 s retrieval p95 — with the q43 caveat below attached to that top row. The full progression from the 0.05 baseline is the README's eval table.
+The current agent configuration scores **easy 1.00 / medium 1.00 / hard 1.00** on golden set v2, at 28.4 s retrieval p95 — with the q43 caveat below attached to that top row. **This measures retrieval only, on a set the system was tuned against** — it says nothing about answer quality, and nothing about questions the system has never seen (backlog item 1). The full progression from the 0.05 baseline is the README's eval table.
 
 Remaining in Phase 4:
 
