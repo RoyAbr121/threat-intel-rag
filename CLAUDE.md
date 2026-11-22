@@ -141,7 +141,7 @@ The non-pinned records in those lists are where the mechanism is actually visibl
 
 - **The q43 caveat — read the top eval row carefully.** q43 reaches 1.00 only because the grade node discards a post-authentication record, which drops the survivor count below `top_k` and triggers the retry that lets the Citrix record in. A direct probe measured that discard decision **varying across identical calls at temperature 0** — three runs on the same five records discarded three records, then one, then one. The row means *"the ceiling is reachable"*, not *"the system scores 1.00"*. Cross-entity crowding is still the underlying weakness, and Step 4.3 is its fix. Full write-up: `artifacts/investigation-q43-anomaly.html`.
 - **Training-data leakage in generation.** `OllamaProvider.stream()` will say the context is insufficient and then answer from training data anyway. The eval sidesteps this by scoring retrieved payloads rather than answer text. Prompt hardening is Step 4.4.
-- **The eval harness never crosses the HTTP boundary.** It consumes `graph.astream()` in-process, so nothing measures `/v1/query` itself. Two real defects hid there by construction: the API still serving the Phase 2 naive-dense path (found in 4.1), and SSE framing silently dropping multi-line tokens (found in 4.2a). The fix is a CI smoke test asserting the wire format, or a harness mode that goes through the API — Phase 5.
+- **The eval harness never crosses the HTTP boundary.** It consumes `graph.astream()` in-process, so nothing measures `/v1/query` itself. Two real defects hid there by construction: the API still serving the Phase 2 naive-dense path (found in 4.1), and SSE framing silently dropping multi-line tokens (found in 4.2a). **Partly closed (backlog item 6, 2026-11-22):** `tests/test_query_endpoint.py` now sends a real HTTP request to `/v1/query` in CI, asserts the SSE wire format, and fails if a routed question is answered by anything but the routed lookup — both historical defects were reintroduced and confirmed to fail it. It stubs Qdrant and Ollama, so it checks the endpoint's wiring and framing, not retrieval quality. What remains open is a harness mode that runs the *eval* through the API — Phase 5.
 - **The index is a 2014→present subset (~185k records) with coverage gaps.** Some real CVEs are absent entirely (xz `CVE-2024-3094`, SolarWinds `CVE-2020-10148`). Measured corollary: about 29% of in-window KEV entries — 443 of 1,514 — are missing. That is an ingestion ceiling on what retrieval can possibly surface, independent of ranking quality.
 - **The grader is weak on qualifiers.** It reliably evicts wrong-product records; it is unreliable on "pre-authentication", on a specific year, and on vulnerability type. Six grader configurations were measured before shipping the current one (batches of five, line output) — see `NOTES.md` 4.2.
 
@@ -230,6 +230,7 @@ src/threat_intel_rag/
 tests/
     test_grade.py       — verdict parsing, grade-chunk wiring, ID resolution
     test_sse.py         — SSE framing (JSON payloads, the [DONE] sentinel)
+    test_query_endpoint.py — POST /v1/query over HTTP: wire format + routed path
 evals/
     v1_golden_questions.jsonl  — original 50-question set (frozen; superseded ruler)
     v2_golden_questions.jsonl  — current ruler (Step 3.7 validity review)

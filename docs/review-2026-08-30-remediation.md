@@ -70,7 +70,7 @@ differ, the reason is in the item detail.
 | 3 | `candidates=20` decided by one question moving | Medium | P0 | open (restate only) |
 | 4 | Golden v2 was itself rewritten from the failure inventory | **Critical** | *mine* | open |
 | 5 | Deliverables verified at the harness, not the product | **Critical** | P0 | open |
-| 6 | HTTP-boundary gap filed as a Phase 5 "known gap" | **High** | P0 | open |
+| 6 | HTTP-boundary gap filed as a Phase 5 "known gap" | **High** | P0 | **done (2026-11-22)** |
 | 7 | Tests arrived at Step 4.2, ~25 steps in | Medium | P0 | open |
 | 8 | "Provable no-op, no eval re-run" used as a substitute for measurement | Medium | P0 | open |
 | 9 | Generation is never measured | **High** | P0 | open |
@@ -192,7 +192,7 @@ section, and it is what prevents the class rather than the instance.
 
 **Done when.** The methodology's verification step names the product boundary explicitly.
 
-### 6 — HTTP-boundary gap filed as a Phase 5 "known gap" · High · open
+### 6 — HTTP-boundary gap filed as a Phase 5 "known gap" · High · **done (2026-11-22)**
 
 **Issue.** The cause was diagnosed correctly — the harness consumes `graph.astream()` in-process and
 never crosses the HTTP boundary, so both the 4.1 defect and the 4.2a SSE defect "hid there by
@@ -207,6 +207,11 @@ sentinel), and asserts that a known routed question returns its pinned CVE. Roug
 
 **Done when.** The test exists, runs in CI, and fails if the endpoint is pointed at a stale
 retrieval path.
+
+**Closed.** `tests/test_query_endpoint.py` sends real HTTP requests to the app through FastAPI's
+in-process test client, stubbing only Qdrant and Ollama. Both historical defects were reintroduced
+by hand and each made it fail. One deviation from the action as written: it runs the app in-process
+rather than starting a server on a port, since CI has no Qdrant or Ollama to start one against.
 
 ### 7 — Tests arrived at Step 4.2, roughly 25 steps in · Medium · open
 

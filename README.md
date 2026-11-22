@@ -184,7 +184,7 @@ curl -N -X POST http://localhost:8000/v1/query \
 Development:
 
 ```bash
-uv run pytest                          # 14 tests, no services required
+uv run pytest                          # 16 tests, no services required
 uv run pre-commit run --all-files      # ruff, ruff-format, mypy --strict
 uv run python evals/run_baseline.py agent v2        # run the eval
 uv run python evals/run_baseline.py agent v2 score  # score it
@@ -215,7 +215,7 @@ Recorded here because a portfolio that hides these is less credible, not more.
 - **The grader is inconsistent.** At temperature 0, the grading step gives different answers to identical input. It reliably rejects wrong-product records; it is weak on qualifiers like "pre-authentication" or a specific year. Six grader configurations were measured before shipping the current one.
 - **Latency is high.** ~90 s end-to-end at p95, almost entirely local 8B generation. Retrieval alone is ~28 s at p95 on the agent path, driven by the grading calls and the retry.
 - **No auth, rate limiting, or multi-tenancy.** Phase 6.
-- **The eval never crosses the HTTP boundary.** It calls the graph in-process, so two real API defects hid there — the endpoint serving a stale code path, and SSE framing silently dropping newlines. Both are fixed; the structural gap is Phase 5 work.
+- **The eval never crosses the HTTP boundary.** It calls the graph in-process, so two real API defects hid there — the endpoint serving a stale code path, and SSE framing silently dropping newlines. Both are fixed, and a CI test now sends a real request to `/v1/query` and fails on either defect (Qdrant and Ollama are stubbed, so it checks wiring and framing, not retrieval quality). Running the eval itself through the API is Phase 5 work.
 
 ---
 
